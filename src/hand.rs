@@ -156,4 +156,23 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn aces_3() {
+        // a pair of aces with 3rd card worth 9 or less is 12 + 3rd card
+        // else 2 + 3rd card
+        let base = Hand::new(&[Card::new(Rank::RA, SUIT), Card::new(Rank::RA, SUIT)]);
+        for r in ALL_RANKS.iter() {
+            let mut hand = base.clone();
+            hand.cards.push(Card::new(*r, SUIT));
+            if r.value() <= 9 {
+                assert_eq!(hand.value(), 12 + r.value());
+            } else {
+                // test sanity check, not actual test
+                assert!(r.value() > 9);
+                // actual test
+                assert_eq!(hand.value(), 2 + r.value());
+            }
+        }
+    }
 }
