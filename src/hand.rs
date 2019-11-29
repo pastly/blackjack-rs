@@ -83,7 +83,6 @@ mod tests {
     #[test]
     fn value_le_21() {
         for hand in all_pairs() {
-            //eprintln!("{}", hand);
             let mut v = hand.cards[0].value();
             if hand.cards[1].rank == Rank::RA && v >= 11 {
                 v += 1;
@@ -145,11 +144,9 @@ mod tests {
             hand.cards.push(Card::new(Rank::RA, SUIT));
             match orig_val {
                 4..=10 => {
-                    eprintln!("{}", hand);
                     assert_eq!(hand.value(), orig_val + 11);
                 }
                 11..=21 => {
-                    eprintln!("{}", hand);
                     assert_eq!(hand.value(), orig_val + 1);
                 }
                 _ => unreachable!(),
