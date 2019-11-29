@@ -65,7 +65,7 @@ pub enum Rank {
 }
 
 impl Rank {
-    pub fn value(&self) -> u8 {
+    pub fn value(self) -> u8 {
         match self {
             Rank::R2 => 2,
             Rank::R3 => 3,
@@ -118,7 +118,7 @@ impl Card {
         Self { rank, suit }
     }
 
-    pub fn value(&self) -> u8 {
+    pub fn value(self) -> u8 {
         self.rank.value()
     }
 }

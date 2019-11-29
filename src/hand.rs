@@ -21,7 +21,7 @@ impl fmt::Display for Hand {
 }
 
 impl Hand {
-    pub fn new(cards: &[Card; 2]) -> Self {
+    pub fn new(cards: &[Card]) -> Self {
         Self {
             cards: cards.to_vec(),
         }
