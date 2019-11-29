@@ -11,7 +11,7 @@ const ALL_RANKS: [Rank; 13] = [
     Rank::R7,
     Rank::R8,
     Rank::R9,
-    Rank::R10,
+    Rank::RT,
     Rank::RJ,
     Rank::RQ,
     Rank::RK,
@@ -19,6 +19,14 @@ const ALL_RANKS: [Rank; 13] = [
 ];
 const ALL_SUITS: [Suit; 4] = [Suit::Club, Suit::Diamond, Suit::Heart, Suit::Spade];
 const DECK_LEN: usize = ALL_RANKS.len() * ALL_SUITS.len();
+//const SPADE: &str = "♠";
+const SPADE: &str = "♤";
+//const HEART: &str = "♥";
+const HEART: &str = "♡";
+//const DIAMOND: &str = "♦";
+const DIAMOND: &str = "♢";
+//const CLUB: &str = "♣";
+const CLUB: &str = "♧";
 
 //enum Choice {
 //    Hit,
@@ -36,6 +44,17 @@ pub enum Suit {
     Spade,
 }
 
+impl fmt::Display for Suit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Club => write!(f, "{}", CLUB),
+            Self::Diamond => write!(f, "{}", DIAMOND),
+            Self::Heart => write!(f, "{}", HEART),
+            Self::Spade => write!(f, "{}", SPADE),
+        }
+    }
+}
+
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Rank {
     R2,
@@ -46,17 +65,43 @@ pub enum Rank {
     R7,
     R8,
     R9,
-    R10,
+    RT,
     RJ,
     RQ,
     RK,
     RA,
 }
 
+impl fmt::Display for Rank {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::R2 => write!(f, "2"),
+            Self::R3 => write!(f, "3"),
+            Self::R4 => write!(f, "4"),
+            Self::R5 => write!(f, "5"),
+            Self::R6 => write!(f, "6"),
+            Self::R7 => write!(f, "7"),
+            Self::R8 => write!(f, "8"),
+            Self::R9 => write!(f, "9"),
+            Self::RT => write!(f, "T"),
+            Self::RJ => write!(f, "J"),
+            Self::RQ => write!(f, "Q"),
+            Self::RK => write!(f, "K"),
+            Self::RA => write!(f, "A"),
+        }
+    }
+}
+
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Card {
     suit: Suit,
     rank: Rank,
+}
+
+impl fmt::Display for Card {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", self.rank, self.suit)
+    }
 }
 
 impl Card {
