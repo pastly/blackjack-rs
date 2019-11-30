@@ -96,16 +96,57 @@ mod tests {
     use super::Table;
     use crate::deck::{Card, Rank, Suit};
     use crate::hand::Hand;
-    use std::fs::OpenOptions;
+
+    const T1: &str = "
+# It's not important which tables these are, but for completeness,
+# these are the tables for 4+ deck, dealer hit soft 17, double after split,
+# no surrender, peek for BJ
+# https://wizardofodds.com/games/blackjack/strategy/calculator/
+# hard
+HHHHHHHHHH
+HHHHHHHHHH
+HHHHHHHHHH
+HHHHHHHHHH
+HDDDDHHHHH
+DDDDDDDDHH
+DDDDDDDDDD
+HHSSSHHHHH
+SSSSSHHHHH
+SSSSSHHHHH
+SSSSSHHHHH
+SSSSSHHHHH
+SSSSSSSSSS
+SSSSSSSSSS
+SSSSSSSSSS
+SSSSSSSSSS
+SSSSSSSSSS
+# soft
+HHHDDHHHHH
+HHHDDHHHHH
+HHDDDHHHHH
+HHDDDHHHHH
+HDDDDHHHHH
+DDDDDSSHHH
+SSSSDSSSSS
+SSSSSSSSSS
+SSSSSSSSSS
+# pair
+PPPPPPHHHH
+PPPPPPHHHH
+HHHPPHHHHH
+DDDDDDDDHH
+PPPPPHHHHH
+PPPPPPHHHH
+PPPPPPPPPP
+PPPPPSPPSS
+SSSSSSSSSS
+PPPPPPPPPP
+    ";
 
     #[test]
-    fn asdf() {
-        let fd = OpenOptions::new().read(true).open("t1.txt").unwrap();
-        let table = Table::new(fd).unwrap();
-        let k = (5, 11);
-        eprintln!("{:?} {:?}", k, table.hard.get(&k).unwrap());
-        let k = (19, 11);
-        eprintln!("{:?} {:?}", k, table.hard.get(&k).unwrap());
-        assert!(false);
+    fn new_asserts() {
+        // Table::new() has its own asserts (right now ...). Let's exercise them here.
+        let fd = T1.as_bytes();
+        let _ = Table::new(fd).unwrap();
     }
 }
