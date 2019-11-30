@@ -2,7 +2,7 @@ use rand::prelude::*;
 use std::error::Error;
 use std::fmt;
 
-pub const ALL_RANKS: [Rank; 13] = [
+pub(crate) const ALL_RANKS: [Rank; 13] = [
     Rank::R2,
     Rank::R3,
     Rank::R4,
@@ -65,7 +65,7 @@ pub enum Rank {
 }
 
 impl Rank {
-    pub fn value(self) -> u8 {
+    pub(crate) fn value(self) -> u8 {
         match self {
             Rank::R2 => 2,
             Rank::R3 => 3,
@@ -104,7 +104,7 @@ impl fmt::Display for Rank {
 #[derive(Hash, PartialEq, Eq, PartialOrd, Clone, Copy, Debug)]
 pub struct Card {
     suit: Suit,
-    pub rank: Rank,
+    pub(crate) rank: Rank,
 }
 
 impl fmt::Display for Card {
