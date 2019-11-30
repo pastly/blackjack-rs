@@ -28,7 +28,9 @@ impl Hand {
     }
 
     pub fn is_soft(&self) -> bool {
-        self.cards[0].rank == Rank::RA || self.cards[1].rank == Rank::RA
+        let have_ace = self.cards.iter().filter(|c| c.rank == Rank::RA).count() > 0;
+        let v = self.cards.iter().fold(0, |acc, c| acc + c.value());
+        v <= 11 && have_ace
     }
 
     pub fn value(&self) -> u8 {
@@ -50,13 +52,13 @@ impl Hand {
                 | Rank::RK => c.value(),
                 Rank::RA => {
                     num_ace += 1;
-                    c.rank.value()
+                    c.value()
                 }
             }
         }
-        while acc > 21 && num_ace > 0 {
+        while acc <= 11 && num_ace > 0 {
             num_ace -= 1;
-            acc -= 10;
+            acc += 10;
         }
         acc
     }
@@ -83,10 +85,20 @@ mod tests {
     #[test]
     fn value_le_21() {
         for hand in all_pairs() {
-            let mut v = hand.cards[0].value();
-            if hand.cards[1].rank == Rank::RA && v >= 11 {
-                v += 1;
+            // if the first card is an ace, let it be worth 11
+            let mut v = if hand.cards[0].rank == Rank::RA {
+                11
             } else {
+                hand.cards[0].value()
+            };
+            if hand.cards[1].rank == Rank::RA && v == 11 {
+                // if second card is ace, if first card was also ace, just add one for total of 12
+                v += 1;
+            } else if hand.cards[1].rank == Rank::RA {
+                // else if second card is ace, there's room for it to be worth 11
+                v += 11;
+            } else {
+                // else just take the second card's value
                 v += hand.cards[1].value();
             }
             // sanity check for the test itself, not really exercising the actual code
@@ -97,12 +109,32 @@ mod tests {
     }
 
     #[test]
-    fn is_soft() {
+    fn is_soft_1() {
+        // only tests the pairs for softness
         for hand in all_pairs() {
             assert_eq!(
                 hand.is_soft(),
                 hand.cards.contains(&Card::new(Rank::RA, SUIT))
             );
+        }
+    }
+
+    #[test]
+    fn is_soft_2() {
+        // 2 low cards plus an ace is still soft
+        for mut hand in all_pairs() {
+            // skip if already have ace
+            assert_eq!(hand.cards.len(), 2);
+            if hand.cards[0].rank == Rank::RA || hand.cards[1].rank == Rank::RA {
+                continue;
+            }
+            // note whether we expect it to be soft with an added ace
+            let expect = hand.value() <= 10;
+            // add an ace
+            hand.cards.push(Card::new(Rank::RA, SUIT));
+            eprintln!("{}", hand);
+            // actual test
+            assert_eq!(hand.is_soft(), expect);
         }
     }
 
@@ -127,8 +159,8 @@ mod tests {
             } else {
                 assert_eq!(hand.value(), 2 + extra as u8);
             }
-            // might as well
-            assert!(hand.is_soft());
+            // might as well. soft if 11 or fewer aces
+            assert_eq!(hand.is_soft(), hand.cards.len() <= 11);
         }
     }
 

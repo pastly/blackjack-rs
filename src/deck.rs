@@ -76,7 +76,7 @@ impl Rank {
             Rank::R8 => 8,
             Rank::R9 => 9,
             Rank::RT | Rank::RJ | Rank::RQ | Rank::RK => 10,
-            Rank::RA => 11,
+            Rank::RA => 1, // other code is responsible for adding 10 if possible
         }
     }
 }
