@@ -22,6 +22,7 @@ impl fmt::Display for Hand {
 
 impl Hand {
     pub fn new(cards: &[Card]) -> Self {
+        assert!(cards.len() >= 2);
         Self {
             cards: cards.to_vec(),
         }
@@ -78,6 +79,18 @@ impl Hand {
     /// Whether or not the hand has busted (whether it must be worth more than 21)
     pub fn is_bust(&self) -> bool {
         self.value() > 21
+    }
+
+    /// Whether or not the hand is a pair of same-ranked cards (never true for 3+ cards)
+    pub fn is_pair(&self) -> bool {
+        if self.cards.len() > 2 {
+            return false;
+        }
+        assert_eq!(self.cards.len(), 2);
+        // this is okay to do. 2-9 are obviously okay, ace is okay as long as Card::value() always
+        // returns one of either 1 or 11 for an ace (which is true), and 10, J, Q, K all return 10
+        // and we want to consider them all equal
+        self.cards[0].value() == self.cards[1].value()
     }
 }
 
@@ -252,6 +265,38 @@ mod tests {
                     hand.cards.push(Card::new(*r1, SUIT));
                     hand.cards.push(Card::new(*r2, SUIT));
                     assert_eq!(hand.is_bust(), hand.value() > 21);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn is_pair_1() {
+        // hand is a pair if both cards have equal value
+        for hand in all_pairs() {
+            assert_eq!(hand.cards.len(), 2);
+            assert_eq!(
+                hand.is_pair(),
+                hand.cards[0].value() == hand.cards[1].value()
+            );
+        }
+    }
+
+    #[test]
+    fn is_pair_2() {
+        // 3 cards are never a pair
+        for base in all_pairs() {
+            for r1 in ALL_RANKS.iter() {
+                let mut hand3 = base.clone();
+                hand3.cards.push(Card::new(*r1, SUIT));
+                assert_eq!(hand3.cards.len(), 3);
+                assert!(!hand3.is_pair());
+                // 4 cards aren't either
+                for r2 in ALL_RANKS.iter() {
+                    let mut hand4 = hand3.clone();
+                    hand4.cards.push(Card::new(*r2, SUIT));
+                    assert_eq!(hand4.cards.len(), 4);
+                    assert!(!hand4.is_pair());
                 }
             }
         }
