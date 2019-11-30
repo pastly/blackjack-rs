@@ -74,6 +74,11 @@ impl Hand {
         }
         acc
     }
+
+    /// Whether or not the hand has busted (whether it must be worth more than 21)
+    pub fn is_bust(&self) -> bool {
+        self.value() > 21
+    }
 }
 
 #[cfg(test)]
@@ -213,6 +218,41 @@ mod tests {
                 assert!(r.value() > 9);
                 // actual test
                 assert_eq!(hand.value(), 2 + r.value());
+            }
+        }
+    }
+
+    #[test]
+    fn is_bust_1() {
+        // all pairs are not bust
+        for hand in all_pairs() {
+            assert!(!hand.is_bust());
+        }
+    }
+
+    #[test]
+    fn is_bust_2() {
+        // some 3-card hands are bust. Trusts Hand::value() to be perfect
+        for base in all_pairs() {
+            for r1 in ALL_RANKS.iter() {
+                let mut hand = base.clone();
+                hand.cards.push(Card::new(*r1, SUIT));
+                assert_eq!(hand.is_bust(), hand.value() > 21);
+            }
+        }
+    }
+
+    #[test]
+    fn is_bust_3() {
+        // some 4-card hands are bust. Trusts Hand::value() to be perfect
+        for base in all_pairs() {
+            for r1 in ALL_RANKS.iter() {
+                for r2 in ALL_RANKS.iter() {
+                    let mut hand = base.clone();
+                    hand.cards.push(Card::new(*r1, SUIT));
+                    hand.cards.push(Card::new(*r2, SUIT));
+                    assert_eq!(hand.is_bust(), hand.value() > 21);
+                }
             }
         }
     }
