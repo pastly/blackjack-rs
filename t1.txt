@@ -1,0 +1,46 @@
+## Table
+##     Decks: 4+
+##     Soft 17: dealer hit
+##     Double after split: allowed
+##     Surrender: not allowed
+##     Dealer peek for BJ: yes
+## https://wizardofodds.com/games/blackjack/strategy/calculator/
+# hard hands: player value 5-21 (row) and dealer show 2-A (col)
+HHHHHHHHHH
+HHHHHHHHHH
+HHHHHHHHHH
+HHHHHHHHHH
+HDDDDHHHHH
+DDDDDDDDHH
+DDDDDDDDDD
+HHSSSHHHHH
+SSSSSHHHHH
+SSSSSHHHHH
+SSSSSHHHHH
+SSSSSHHHHH
+SSSSSSSSSS
+SSSSSSSSSS
+SSSSSSSSSS
+SSSSSSSSSS
+SSSSSSSSSS
+# soft hands: player value 13-21 (row) and dealer show 2-A (col)
+HHHDDHHHHH
+HHHDDHHHHH
+HHDDDHHHHH
+HHDDDHHHHH
+HDDDDHHHHH
+DDDDDSSHHH
+SSSSDSSSSS
+SSSSSSSSSS
+SSSSSSSSSS
+# pair hands: player value 4, 6, ... (row) and dealer show 2-A (col)
+PPPPPPHHHH
+PPPPPPHHHH
+HHHPPHHHHH
+DDDDDDDDHH
+PPPPPHHHHH
+PPPPPPHHHH
+PPPPPPPPPP
+PPPPPSPPSS
+SSSSSSSSSS
+PPPPPPPPPP

@@ -1,7 +1,7 @@
 use crate::deck::{Card, Rank};
 use std::fmt;
 
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Hand {
     cards: Vec<Card>,
 }

@@ -17,16 +17,16 @@ pub(crate) const ALL_RANKS: [Rank; 13] = [
     Rank::RK,
     Rank::RA,
 ];
-const ALL_SUITS: [Suit; 4] = [Suit::Club, Suit::Diamond, Suit::Heart, Suit::Spade];
+pub(crate) const ALL_SUITS: [Suit; 4] = [Suit::Club, Suit::Diamond, Suit::Heart, Suit::Spade];
 const DECK_LEN: usize = ALL_RANKS.len() * ALL_SUITS.len();
-//const SPADE: &str = "♠";
 const SPADE: &str = "♤";
-//const HEART: &str = "♥";
 const HEART: &str = "♡";
-//const DIAMOND: &str = "♦";
 const DIAMOND: &str = "♢";
-//const CLUB: &str = "♣";
 const CLUB: &str = "♧";
+//const SPADE: &str = "♠";
+//const HEART: &str = "♥";
+//const DIAMOND: &str = "♦";
+//const CLUB: &str = "♣";
 
 #[derive(Hash, PartialEq, Eq, PartialOrd, Clone, Copy, Debug)]
 pub enum Suit {
