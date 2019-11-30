@@ -27,12 +27,24 @@ impl Hand {
         }
     }
 
+    /// Returns whether or not a hand is soft. A hand is soft if it has at least 1 ace that can be
+    /// worth either 1 or 11 without busting.
     pub fn is_soft(&self) -> bool {
+        // Internally aces are worth 1 by default, so the idea is to see if we have more than 0
+        // aces and if the total hand value (when calculated assuming all aces are only worth 1) is
+        // 11 or less (i.e. there's "room" for at least one ace to be worth 11 instead of 1).
+        // Cannot trivially use Hand::value() to get value as it returns the highest possible
+        // value for non-bust hands.
         let have_ace = self.cards.iter().filter(|c| c.rank == Rank::RA).count() > 0;
         let v = self.cards.iter().fold(0, |acc, c| acc + c.value());
         v <= 11 && have_ace
     }
 
+    /// For non-bust hands, returns the highest possible total value of all cards in the hand. I.e.
+    /// if a hand is soft, returns the high-value possibility. Use Hand::is_soft() to determine
+    /// softness. For bust hands, we currently return lowest possible value (will obviously still
+    /// be a bust), but since the value isn't so important once the hand is busted, this could
+    /// change.
     pub fn value(&self) -> u8 {
         let mut num_ace = 0;
         let mut acc = 0;
