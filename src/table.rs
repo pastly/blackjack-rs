@@ -232,6 +232,7 @@ mod tests {
     use super::{resps_from_buf, Resp, Table, TableError, NUM_CELLS};
     use crate::deck::{Card, Rank, Suit, ALL_RANKS};
     use crate::hand::Hand;
+    use std::iter::repeat;
 
     const T1: &str = "
 # It's not important which tables these are, but for completeness,
@@ -313,7 +314,7 @@ PPPPPPPPPP
 
     fn all_unique_table_keys() -> Vec<(usize, (Hand, Card))> {
         const SUIT: Suit = Suit::Club;
-        let mut keys = vec![];
+        let mut keys = Vec::with_capacity(NUM_CELLS);
         let hands = [
             //hards
             Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::R3, SUIT)]), // 5
@@ -364,14 +365,19 @@ PPPPPPPPPP
             Hand::new(&[Card::new(Rank::RA, SUIT), Card::new(Rank::RA, SUIT)]), // As
         ];
         for hand in hands.iter() {
-            for card in ALL_RANKS
-                .iter()
-                .filter(|r| ![Rank::RJ, Rank::RQ, Rank::RK].contains(r))
-                .map(|r| Card::new(*r, SUIT))
-            {
-                keys.push((hand.clone(), card));
-            }
+            keys.extend(
+                // combine a copy of the hand with each dealer card
+                repeat(hand.clone()).zip(
+                    ALL_RANKS
+                        .iter()
+                        // filter out J Q and K (leaving 10) since all worth 10
+                        .filter(|r| ![Rank::RJ, Rank::RQ, Rank::RK].contains(r))
+                        // turn rank into a card
+                        .map(|r| Card::new(*r, SUIT)),
+                ),
+            );
         }
+        assert_eq!(keys.len(), NUM_CELLS);
         keys.into_iter().enumerate().collect()
     }
 
