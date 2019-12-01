@@ -1,4 +1,4 @@
-use crate::deck::{Card, Rank, Suit};
+use crate::deck::Card;
 use crate::hand::Hand;
 use std::collections::HashMap;
 use std::default::Default;
@@ -44,7 +44,7 @@ pub struct Table {
 }
 
 impl Table {
-    fn new<R>(buf: R) -> io::Result<Self>
+    pub fn new<R>(buf: R) -> io::Result<Self>
     where
         R: Read,
     {
@@ -95,7 +95,7 @@ impl Table {
     /// Some(Resp) is returned. A table lookup error is an indication of a programming error, not
     /// of an error/problem/etc. on the user's part, thus is handled with a panic instead of
     /// returning None.
-    fn best_resp(&self, player_hand: &Hand, dealer_shows: &Card) -> Option<Resp> {
+    pub fn best_resp(&self, player_hand: &Hand, dealer_shows: Card) -> Option<Resp> {
         if player_hand.value() > 21 {
             return None;
         }
@@ -226,7 +226,7 @@ PPPPPPPPPP
         let t = Table::new(T1.as_bytes()).unwrap();
         for hand in all_club_pairs() {
             for dealer in all_clubs() {
-                assert!(t.best_resp(&hand, &dealer).is_some());
+                assert!(t.best_resp(&hand, dealer).is_some());
             }
         }
     }
@@ -237,7 +237,7 @@ PPPPPPPPPP
         let t = Table::new(T1.as_bytes()).unwrap();
         for hand in all_club_trios() {
             for dealer in all_clubs() {
-                assert_eq!(t.best_resp(&hand, &dealer).is_some(), hand.value() <= 21);
+                assert_eq!(t.best_resp(&hand, dealer).is_some(), hand.value() <= 21);
             }
         }
     }
