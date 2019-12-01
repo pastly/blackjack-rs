@@ -142,12 +142,26 @@ impl fmt::Display for DeckError {
 pub struct Deck {
     cards: Vec<Card>,
     next: usize,
+    infinite: bool,
 }
 
 impl Deck {
     /// Generate a new single deck of cards, shuffled
     pub fn new() -> Self {
         let mut d = Self::with_length(1);
+        d.shuffle();
+        d
+    }
+
+    /// Generate a deck of cards of infinite size, shuffled, and implemented as always shuffling
+    /// the deck after returning a copy of the topmost card
+    pub fn new_infinite() -> Self {
+        // First get a non-infinite single deck
+        let mut d = Self::with_length(1);
+        // Set the inifinite flag
+        assert!(!d.infinite);
+        d.infinite = true;
+        // Shuffle and return
         d.shuffle();
         d
     }
@@ -180,6 +194,7 @@ impl Deck {
         let mut d = Self {
             cards: multi,
             next: 0,
+            infinite: false,
         };
         // shuffle it
         d.shuffle();
@@ -187,7 +202,12 @@ impl Deck {
     }
 
     pub fn draw(&mut self) -> Result<Card, DeckError> {
-        if self.next == self.cards.len() {
+        if self.infinite {
+            assert_eq!(self.next, 0);
+            let c = self.cards[self.next];
+            self.shuffle();
+            Ok(c)
+        } else if self.next == self.cards.len() {
             Err(DeckError::OutOfCards)
         } else {
             let c = self.cards[self.next];
@@ -266,5 +286,15 @@ mod tests {
             assert!(d.draw().is_ok());
         }
         assert_eq!(d.draw().unwrap_err(), DeckError::OutOfCards);
+    }
+
+    #[test]
+    fn draw_infinite() {
+        // can draw from an infinite deck many more times than its internal length. currently the
+        // length is DECK_LEN, but let's further assume it's 8 * DECK_LEN and draw past that
+        let mut d = Deck::new_infinite();
+        for _ in 0..8 * DECK_LEN + 10 {
+            assert!(d.draw().is_ok());
+        }
     }
 }
