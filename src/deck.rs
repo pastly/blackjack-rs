@@ -201,6 +201,7 @@ impl Deck {
         d
     }
 
+    /// Draw the topmost card and return it, or return and error if, e.g., there are no more cards.
     pub fn draw(&mut self) -> Result<Card, DeckError> {
         if self.infinite {
             assert_eq!(self.next, 0);
