@@ -64,7 +64,7 @@ impl Table {
                 let k = (player_value, dealer_up);
                 let v = resps.next().unwrap();
                 //eprintln!("{:?} {:?}", k, v);
-                t.hard.insert(k, v);
+                assert!(t.hard.insert(k, v).is_none());
             }
         }
         // soft table
@@ -73,7 +73,7 @@ impl Table {
                 let k = (player_value, dealer_up);
                 let v = resps.next().unwrap();
                 //eprintln!("{:?} {:?}", k, v);
-                t.hard.insert(k, v);
+                assert!(t.soft.insert(k, v).is_none());
             }
         }
         // pair table
@@ -83,7 +83,7 @@ impl Table {
                 let k = (*player_value, dealer_up);
                 let v = resps.next().unwrap();
                 eprintln!("{:?} {:?}", k, v);
-                t.pair.insert(k, v);
+                assert!(t.pair.insert(k, v).is_none());
             }
         }
         assert!(resps.next().is_none());
