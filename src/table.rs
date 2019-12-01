@@ -291,6 +291,7 @@ mod tests {
     use crate::hand::Hand;
     use std::iter::repeat;
 
+    const SUIT: Suit = Suit::Club;
     const T1: &str = "
 # It's not important which tables these are, but for completeness,
 # these are the tables for 4+ deck, dealer hit soft 17, double after split,
@@ -370,7 +371,6 @@ PPPPPPPPPP
     }
 
     fn all_unique_table_keys() -> Vec<(usize, (Hand, Card))> {
-        const SUIT: Suit = Suit::Club;
         let mut keys = Vec::with_capacity(NUM_CELLS);
         let hands = [
             //hards
@@ -526,8 +526,6 @@ PPPPPPPPPP
         // Fetches from the correct place when player hand has pair of aces, which is handled as a
         // special case. This is/should be handled implicitly by the get_all() test, but why not
         // make double sure
-        use std::iter::repeat;
-        const SUIT: Suit = Suit::Club;
         const NOT_VAL: u8 = 0;
         const VAL: u8 = 1;
         let mut t: Table<u8> = Table::new();
@@ -548,10 +546,67 @@ PPPPPPPPPP
     fn get_all() {
         // all values are stored in the expected positions
         let mut t: Table<u16> = Table::new();
-        t.fill(0..360).unwrap();
+        t.fill(0..NUM_CELLS as u16).unwrap();
         for (i, key) in all_unique_table_keys().into_iter() {
             //eprintln!("{} {:?}", i, key);
             assert_eq!(t.get(&key.0, key.1).unwrap(), i as u16);
+        }
+    }
+
+    #[test]
+    fn get_notfilled() {
+        // get on unfilled table fails
+        let h = Hand::new(&vec![Card::new(Rank::RT, SUIT); 3]);
+        let c = Card::new(Rank::R2, SUIT);
+        let t: Table<()> = Table::new();
+        assert_eq!(t.get(&h, c).unwrap_err(), TableError::NotFilled);
+    }
+
+    #[test]
+    fn update_notfilled() {
+        // update on unfilled table fails
+        let h = Hand::new(&vec![Card::new(Rank::RT, SUIT); 3]);
+        let c = Card::new(Rank::R2, SUIT);
+        let mut t: Table<()> = Table::new();
+        assert_eq!(t.update(&h, c, ()).unwrap_err(), TableError::NotFilled);
+    }
+
+    #[test]
+    fn get_bust() {
+        // get on busted hand fails
+        let h = Hand::new(&vec![Card::new(Rank::RT, SUIT); 3]);
+        let c = Card::new(Rank::R2, SUIT);
+        let mut t: Table<()> = Table::new();
+        t.fill(repeat(()).take(NUM_CELLS)).unwrap();
+        assert_eq!(t.get(&h, c).unwrap_err(), TableError::HandIsBust(h, c));
+    }
+
+    #[test]
+    fn update_bust() {
+        // update on busted hand fails
+        let h = Hand::new(&vec![Card::new(Rank::RT, SUIT); 3]);
+        let c = Card::new(Rank::R2, SUIT);
+        let mut t: Table<()> = Table::new();
+        t.fill(repeat(()).take(NUM_CELLS)).unwrap();
+        assert_eq!(
+            t.update(&h, c, ()).unwrap_err(),
+            TableError::HandIsBust(h, c)
+        );
+    }
+
+    #[test]
+    fn update() {
+        // updating always returns old value and correctly stores new value
+        let mut t: Table<u16> = Table::new();
+        t.fill(1..NUM_CELLS as u16 + 1).unwrap();
+        for (i, key) in all_unique_table_keys().into_iter() {
+            // cast once now to avoid doing it a bunch later, plus increment to match value stored
+            // in table
+            let i = i as u16 + 1;
+            // update should return old value
+            assert_eq!(t.update(&key.0, key.1, i * 2).unwrap(), i);
+            // future gets should return new value
+            assert_eq!(t.get(&key.0, key.1).unwrap(), i * 2);
         }
     }
 }
