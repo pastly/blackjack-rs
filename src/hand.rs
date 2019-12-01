@@ -3,7 +3,7 @@ use std::fmt;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Hand {
-    cards: Vec<Card>,
+    pub(crate) cards: Vec<Card>,
 }
 
 impl fmt::Display for Hand {

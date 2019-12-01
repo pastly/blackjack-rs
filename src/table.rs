@@ -1,4 +1,4 @@
-use crate::deck::Card;
+use crate::deck::{Card, Rank};
 use crate::hand::Hand;
 use std::collections::HashMap;
 use std::fmt;
@@ -198,7 +198,14 @@ where
         } else {
             &self.hard
         };
-        let p = player_hand.value();
+        let p = if player_hand.is_pair() && player_hand.cards[0].rank == Rank::RA {
+            // player having a pair of aces is a special case. Hand::value() returns 12, which
+            // causes a lookup in the pair take for a pair of 6s. Thus aces are stored with keys
+            // with player hand value 22.
+            22
+        } else {
+            player_hand.value()
+        };
         let d = if dealer_shows.value() == 1 {
             11
         } else {
@@ -385,5 +392,30 @@ PPPPPPPPPP
                 assert_eq!(t.get(&hand, dealer).is_ok(), hand.value() <= 21);
             }
         }
+    }
+
+    #[test]
+    fn get_pair_aces() {
+        // Fetches from the correct place when player hand has pair of aces, which is handled as a
+        // special case
+        use crate::deck::Rank;
+        use std::iter::repeat;
+        const SUIT: Suit = Suit::Club;
+        const NOT_VAL: u8 = 0;
+        const VAL: u8 = 1;
+        let mut t: Table<u8> = Table::new();
+        // fill all but the last cell with NOT_VAL. Last cell should have key [(A, A), A], which
+        // has a pair of aces for the player hand
+        assert_eq!(
+            t.fill(
+                repeat(NOT_VAL)
+                    .take(NUM_CELLS - 1)
+                    .chain(repeat(VAL).take(1))
+            ),
+            Ok(())
+        );
+        let h = Hand::new(&[Card::new(Rank::RA, SUIT), Card::new(Rank::RA, SUIT)]);
+        let d = Card::new(Rank::RA, SUIT);
+        assert_eq!(t.get(&h, d).unwrap(), VAL);
     }
 }
