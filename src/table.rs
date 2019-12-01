@@ -1,4 +1,4 @@
-use crate::deck::{Card, Rank, Suit, ALL_RANKS, ALL_SUITS};
+use crate::deck::{Card, Rank, Suit};
 use crate::hand::Hand;
 use std::collections::HashMap;
 use std::default::Default;
@@ -89,12 +89,50 @@ impl Table {
         assert!(resps.next().is_none());
         Ok(t)
     }
+
+    /// Lookup and return the best response for the player, if it exists. The only valid reason for
+    /// it to not exist is if the player has busted already, and in this None is returned. Else
+    /// Some(Resp) is returned. A table lookup error is an indication of a programming error, not
+    /// of an error/problem/etc. on the user's part, thus is handled with a panic instead of
+    /// returning None.
+    fn best_resp(&self, player_hand: &Hand, dealer_shows: &Card) -> Option<Resp> {
+        if player_hand.value() > 21 {
+            return None;
+        }
+        assert!(player_hand.value() >= 2);
+        let table = if player_hand.is_pair() {
+            &self.pair
+        } else if player_hand.is_soft() {
+            &self.soft
+        } else {
+            &self.hard
+        };
+        let p = player_hand.value();
+        let d = if dealer_shows.value() == 1 {
+            11
+        } else {
+            dealer_shows.value()
+        };
+        let key = (p, d);
+        if let Some(v) = table.get(&key) {
+            Some(*v)
+        } else {
+            panic!(format!(
+                "Unable to find best resp for hand {} with dealer {}. soft={} pair={}. key={:?}",
+                player_hand,
+                dealer_shows,
+                player_hand.is_soft(),
+                player_hand.is_pair(),
+                key,
+            ))
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Table;
-    use crate::deck::{Card, Rank, Suit};
+    use crate::deck::{Card, Suit, ALL_RANKS};
     use crate::hand::Hand;
 
     const T1: &str = "
@@ -143,10 +181,64 @@ SSSSSSSSSS
 PPPPPPPPPP
     ";
 
+    fn all_clubs() -> Vec<Card> {
+        let mut v = vec![];
+        for r in ALL_RANKS.iter() {
+            for s in &[Suit::Club] {
+                v.push(Card::new(*r, *s));
+            }
+        }
+        v
+    }
+
+    fn all_club_pairs() -> Vec<Hand> {
+        let mut hands = vec![];
+        for c1 in all_clubs() {
+            for c2 in all_clubs() {
+                hands.push(Hand::new(&[c1, c2]));
+            }
+        }
+        hands
+    }
+
+    fn all_club_trios() -> Vec<Hand> {
+        let mut hands = vec![];
+        for c1 in all_clubs() {
+            for c2 in all_clubs() {
+                for c3 in all_clubs() {
+                    hands.push(Hand::new(&[c1, c2, c3]));
+                }
+            }
+        }
+        hands
+    }
+
     #[test]
     fn new_asserts() {
         // Table::new() has its own asserts (right now ...). Let's exercise them here.
         let fd = T1.as_bytes();
         let _ = Table::new(fd).unwrap();
+    }
+
+    #[test]
+    fn best_resp_1() {
+        // all 2-card hands against all dealer show cards have a best response
+        let t = Table::new(T1.as_bytes()).unwrap();
+        for hand in all_club_pairs() {
+            for dealer in all_clubs() {
+                assert!(t.best_resp(&hand, &dealer).is_some());
+            }
+        }
+    }
+
+    #[test]
+    fn best_resp_2() {
+        // 3-card hands should have a best response as long as they are worth 21 or less
+        let t = Table::new(T1.as_bytes()).unwrap();
+        for hand in all_club_trios() {
+            for dealer in all_clubs() {
+                assert_eq!(t.best_resp(&hand, &dealer).is_some(), hand.value() <= 21);
+            }
+        }
     }
 }
