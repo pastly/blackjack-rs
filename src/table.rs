@@ -2,9 +2,10 @@ use crate::deck::Card;
 use crate::hand::Hand;
 use std::collections::HashMap;
 use std::default::Default;
+use std::fmt;
 use std::io::{self, Read};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Resp {
     Hit,
     Stand,
@@ -13,13 +14,24 @@ pub enum Resp {
     //Surrender,
 }
 
-fn resp_from_char(c: char) -> Resp {
+impl fmt::Display for Resp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Hit => write!(f, "Hit"),
+            Self::Stand => write!(f, "Stand"),
+            Self::Double => write!(f, "Double"),
+            Self::Split => write!(f, "Split"),
+        }
+    }
+}
+
+pub fn resp_from_char(c: char) -> Option<Resp> {
     match c {
-        'H' => Resp::Hit,
-        'S' => Resp::Stand,
-        'D' => Resp::Double,
-        'P' => Resp::Split,
-        _ => unreachable!("Calling code should have prevented unknown chars from reaching here"),
+        'H' => Some(Resp::Hit),
+        'S' => Some(Resp::Stand),
+        'D' => Some(Resp::Double),
+        'P' => Some(Resp::Split),
+        _ => None,
     }
 }
 
@@ -54,7 +66,7 @@ impl Table {
         let mut s = String::with_capacity(NUM_CELLS);
         buf.read_to_string(&mut s)?;
         assert_eq!(s.len(), NUM_CELLS);
-        let mut resps = s.chars().map(resp_from_char);
+        let mut resps = s.chars().map(|c| resp_from_char(c).unwrap());
         let mut t = Self {
             ..Default::default()
         };
