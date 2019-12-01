@@ -82,7 +82,7 @@ impl Table {
             for dealer_up in 2..=11 {
                 let k = (*player_value, dealer_up);
                 let v = resps.next().unwrap();
-                eprintln!("{:?} {:?}", k, v);
+                //eprintln!("{:?} {:?}", k, v);
                 assert!(t.pair.insert(k, v).is_none());
             }
         }
