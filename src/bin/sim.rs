@@ -1,6 +1,6 @@
 use blackjack::deck::{Card, Deck};
 use blackjack::hand::Hand;
-use blackjack::table::{resp_from_char, Resp, Table};
+use blackjack::table::{resp_from_char, resps_from_buf, Resp, Table};
 use clap;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
@@ -13,7 +13,7 @@ fn prompt(p: &Hand, d: Card) -> Result<Option<Resp>, io::Error> {
         io::stdin().read_line(&mut s)?;
         s = s.trim().to_string();
         if s.is_empty() {
-            println!("");
+            println!();
             return Ok(None);
         }
         let c: char = s.chars().take(1).collect::<Vec<char>>()[0].to_ascii_uppercase();
@@ -39,19 +39,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .required(true),
         )
         .get_matches();
-    let table = Table::new(
+    let mut deck = Deck::new_infinite();
+    let mut table = Table::new();
+    table.fill(resps_from_buf(
         OpenOptions::new()
             .read(true)
             // safe to unwrap because --table is required
             .open(matches.value_of("table").unwrap())?,
-    )?;
-    let mut deck = Deck::new_infinite();
+    ))?;
     loop {
         let player = Hand::new(&[deck.draw()?, deck.draw()?]);
         let dealer_up = deck.draw()?;
         if let Some(choice) = prompt(&player, dealer_up)? {
-            // safe to unwrap because player has 21 or less and all other errors are panic!()
-            let best = table.best_resp(&player, dealer_up).unwrap();
+            // safe to unwrap because table is filled, player has 21 or less, and all other errors
+            // are panic!()
+            let best = table.get(&player, dealer_up).unwrap();
             print!("{} ", choice);
             if choice == best {
                 println!("correct");

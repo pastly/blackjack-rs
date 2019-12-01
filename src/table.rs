@@ -1,9 +1,10 @@
 use crate::deck::Card;
 use crate::hand::Hand;
 use std::collections::HashMap;
-use std::default::Default;
 use std::fmt;
-use std::io::{self, Read};
+use std::io::Read;
+
+const NUM_CELLS: usize = 10 * (17 + 9 + 10);
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Resp {
@@ -25,6 +26,22 @@ impl fmt::Display for Resp {
     }
 }
 
+/// Take something that impls Read, strip out comments ('#' until end of line), ignore everything
+/// that isn't in "HSDP" (hit, stand, double, split), and return a vector of these parsed
+/// Vec<Resp>.
+pub fn resps_from_buf<R>(buf: R) -> Vec<Resp>
+where
+    R: Read,
+{
+    use crate::buffer::{CharWhitelistIter, CommentStripIter};
+    let mut buf = CharWhitelistIter::new(CommentStripIter::new(buf), "HSDP");
+    let mut s = String::with_capacity(NUM_CELLS);
+    buf.read_to_string(&mut s).unwrap();
+    // safe to unwrap as CharWhitelistIter will remove non-Resp chars
+    s.chars().map(|c| resp_from_char(c).unwrap()).collect()
+}
+
+/// Convert the given char into a Resp, or None if impossible
 pub fn resp_from_char(c: char) -> Option<Resp> {
     match c {
         'H' => Some(Resp::Hit),
@@ -35,57 +52,113 @@ pub fn resp_from_char(c: char) -> Option<Resp> {
     }
 }
 
-/// Storage for the all ideal opening player responses
-///
-/// Table::new() takes something which impls Read. From this it ignores all comments ('#' until
-/// newline) and then ignores all characters that are not a "response character." At the time of
-/// writing, those are "HSDP" for hit, stand, double, and split respectively. This allows for
-/// organization using whitespace and limited human readability.
-///
-/// The input Read-able buffer is logically split into three tables: the hard hands, soft hands,
-/// and pairs. In all tables there are 10 columns (dealer shows 2, 3, 4, ... ace). The first (hard)
-/// table has 17 rows (player hand value 5-21). The second (soft) table has 9 rows (player hand
-/// value 13-21). The third (pairs) table has 10 rows (player hand pair of 2s, 3s, 4s ... 10s,
-/// aces). This results in 370 total cells. Rows are "filled in" first. For a visual example, see
-/// the Wizard of Odds website: https://wizardofodds.com/games/blackjack/strategy/calculator/
-#[derive(Default)]
-pub struct Table {
-    hard: HashMap<(u8, u8), Resp>,
-    soft: HashMap<(u8, u8), Resp>,
-    pair: HashMap<(u8, u8), Resp>,
+#[derive(PartialEq, Debug)]
+pub enum TableError {
+    NotFilled,
+    AlreadyFilled,
+    IncorrectFillLength(usize, usize),
+    HandIsBust(Hand, Card),
 }
 
-impl Table {
-    pub fn new<R>(buf: R) -> io::Result<Self>
+impl std::error::Error for TableError {}
+
+impl fmt::Display for TableError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TableError::NotFilled => write!(f, "Table not filled in yet"),
+            TableError::AlreadyFilled => write!(f, "Table has already been filled"),
+            TableError::IncorrectFillLength(expect, given) => write!(
+                f,
+                "Table needs {} elements but was given {}{}",
+                expect,
+                given,
+                if given > expect { " or more" } else { "" }
+            ),
+            TableError::HandIsBust(hand, card) => write!(
+                f,
+                "Cannot find item at {}/{} because hand is bust",
+                hand, card
+            ),
+        }
+    }
+}
+
+/// Store something in each cell of a blackjack strategy card. E.g. the best move to make.
+///
+/// Table::new() returns an empty table that then must be filled with Table::fill().
+///
+/// Table contains three logical subtables: the hard hands, soft hands, and pairs.  In all
+/// subtables there are 10 columns (dealer shows 2, 3, 4, ... ace). The first (hard) table has 17
+/// rows (player hand value 5-21). The second (soft) table has 9 rows (player hand value 13-21).
+/// The third (pairs) table has 10 rows (player hand pair of 2s, 3s, 4s ... 10s, aces). This
+/// results in 370 total cells. Table::fill() takes an iterable and fills in the subtables
+/// left-to-right and top-to-bottom one right after another.  For a visual example of what a Table
+/// looks like (e.g. if used to store the best move for a player to make), see the blackjack
+/// strategy cards on the Wizard of Odds website:
+/// https://wizardofodds.com/games/blackjack/strategy/calculator/.
+pub struct Table<T>
+where
+    // might not all be necessary
+    T: PartialEq + Copy + Clone,
+{
+    hard: HashMap<(u8, u8), T>,
+    soft: HashMap<(u8, u8), T>,
+    pair: HashMap<(u8, u8), T>,
+    is_filled: bool,
+}
+
+impl<T> Table<T>
+where
+    T: PartialEq + Copy + Clone,
+{
+    pub fn new() -> Self {
+        Self {
+            hard: HashMap::new(),
+            soft: HashMap::new(),
+            pair: HashMap::new(),
+            is_filled: false,
+        }
+    }
+
+    /// Fill the Table's subtables from the given iterable.
+    ///
+    /// The iterable must be exactly 370 items in length, else return an error.
+    /// The table must not have been filled already, else return an error.
+    ///
+    /// See Table's documentation for more information.
+    pub fn fill<I>(&mut self, vals: I) -> Result<(), TableError>
     where
-        R: Read,
+        I: IntoIterator<Item = T>,
     {
-        use crate::buffer::{CharWhitelistIter, CommentStripIter};
-        const NUM_CELLS: usize = 10 * (17 + 9 + 10);
-        let mut buf = CharWhitelistIter::new(CommentStripIter::new(buf), "HSDP");
-        let mut s = String::with_capacity(NUM_CELLS);
-        buf.read_to_string(&mut s)?;
-        assert_eq!(s.len(), NUM_CELLS);
-        let mut resps = s.chars().map(|c| resp_from_char(c).unwrap());
-        let mut t = Self {
-            ..Default::default()
-        };
+        let mut cell_idx = 0;
+        if self.is_filled {
+            return Err(TableError::AlreadyFilled);
+        }
+        let mut vals = vals.into_iter();
         // hard table
         for player_value in 5..=21 {
             for dealer_up in 2..=11 {
                 let k = (player_value, dealer_up);
-                let v = resps.next().unwrap();
-                //eprintln!("{:?} {:?}", k, v);
-                assert!(t.hard.insert(k, v).is_none());
+                if let Some(v) = vals.next() {
+                    //eprintln!("{:?} {:?}", k, v);
+                    assert!(self.hard.insert(k, v).is_none());
+                    cell_idx += 1;
+                } else {
+                    return Err(TableError::IncorrectFillLength(NUM_CELLS, cell_idx));
+                }
             }
         }
         // soft table
         for player_value in 13..=21 {
             for dealer_up in 2..=11 {
                 let k = (player_value, dealer_up);
-                let v = resps.next().unwrap();
-                //eprintln!("{:?} {:?}", k, v);
-                assert!(t.soft.insert(k, v).is_none());
+                if let Some(v) = vals.next() {
+                    //eprintln!("{:?} {:?}", k, v);
+                    assert!(self.soft.insert(k, v).is_none());
+                    cell_idx += 1;
+                } else {
+                    return Err(TableError::IncorrectFillLength(NUM_CELLS, cell_idx));
+                }
             }
         }
         // pair table
@@ -93,23 +166,32 @@ impl Table {
         for player_value in &[4, 6, 8, 10, 12, 14, 16, 18, 20, 22] {
             for dealer_up in 2..=11 {
                 let k = (*player_value, dealer_up);
-                let v = resps.next().unwrap();
-                //eprintln!("{:?} {:?}", k, v);
-                assert!(t.pair.insert(k, v).is_none());
+                if let Some(v) = vals.next() {
+                    //eprintln!("{:?} {:?}", k, v);
+                    assert!(self.pair.insert(k, v).is_none());
+                    cell_idx += 1;
+                } else {
+                    return Err(TableError::IncorrectFillLength(NUM_CELLS, cell_idx));
+                }
             }
         }
-        assert!(resps.next().is_none());
-        Ok(t)
+        if vals.next().is_some() {
+            return Err(TableError::IncorrectFillLength(NUM_CELLS, cell_idx + 1));
+        }
+        assert_eq!(NUM_CELLS, cell_idx);
+        self.is_filled = true;
+        Ok(())
     }
 
-    /// Lookup and return the best response for the player, if it exists. The only valid reason for
-    /// it to not exist is if the player has busted already, and in this None is returned. Else
-    /// Some(Resp) is returned. A table lookup error is an indication of a programming error, not
-    /// of an error/problem/etc. on the user's part, thus is handled with a panic instead of
-    /// returning None.
-    pub fn best_resp(&self, player_hand: &Hand, dealer_shows: Card) -> Option<Resp> {
-        if player_hand.value() > 21 {
-            return None;
+    /// Lookup and return the value stored at the given location in the table, if it exists.
+    /// The table must already be filled, else an error is returned. If the player's hand is bust,
+    /// then lookup would fail and an error is returned. There is no other reason for lookup to
+    /// fail, so if it does, that indicates a programming error and we panic.
+    pub fn get(&self, player_hand: &Hand, dealer_shows: Card) -> Result<T, TableError> {
+        if !self.is_filled {
+            return Err(TableError::NotFilled);
+        } else if player_hand.value() > 21 {
+            return Err(TableError::HandIsBust(player_hand.clone(), dealer_shows));
         }
         assert!(player_hand.value() >= 2);
         let table = if player_hand.is_pair() {
@@ -127,7 +209,7 @@ impl Table {
         };
         let key = (p, d);
         if let Some(v) = table.get(&key) {
-            Some(*v)
+            Ok(*v)
         } else {
             panic!(format!(
                 "Unable to find best resp for hand {} with dealer {}. soft={} pair={}. key={:?}",
@@ -143,7 +225,7 @@ impl Table {
 
 #[cfg(test)]
 mod tests {
-    use super::Table;
+    use super::{resps_from_buf, Resp, Table, TableError, NUM_CELLS};
     use crate::deck::{Card, Suit, ALL_RANKS};
     use crate::hand::Hand;
 
@@ -226,30 +308,85 @@ PPPPPPPPPP
     }
 
     #[test]
-    fn new_asserts() {
-        // Table::new() has its own asserts (right now ...). Let's exercise them here.
-        let fd = T1.as_bytes();
-        let _ = Table::new(fd).unwrap();
+    fn fill_empty() {
+        // Should fail to fill table with empty iter
+        let mut t = Table::<()>::new();
+        assert_eq!(
+            t.fill(vec![]).unwrap_err(),
+            TableError::IncorrectFillLength(NUM_CELLS, 0)
+        );
     }
 
     #[test]
-    fn best_resp_1() {
+    fn fill_short() {
+        // Should fail to fill with too few items
+        for count in 1..NUM_CELLS {
+            let mut t = Table::<()>::new();
+            assert_eq!(
+                t.fill(vec![(); count]).unwrap_err(),
+                TableError::IncorrectFillLength(NUM_CELLS, count)
+            );
+        }
+    }
+
+    #[test]
+    fn fill_long() {
+        // Should fail to fill with too few items
+        for count in NUM_CELLS + 1..NUM_CELLS + 10 {
+            let mut t = Table::<()>::new();
+            eprintln!("{}", count);
+            assert_eq!(
+                t.fill(vec![(); count]).unwrap_err(),
+                TableError::IncorrectFillLength(NUM_CELLS, NUM_CELLS + 1)
+            );
+        }
+    }
+
+    #[test]
+    fn fill() {
+        // Should succeed with exactly correct number of items
+        let mut t = Table::<()>::new();
+        assert!(t.fill(vec![(); NUM_CELLS]).is_ok());
+    }
+
+    #[test]
+    fn fill_twice() {
+        // cannot fill twice
+        let mut t = Table::<()>::new();
+        assert!(t.fill(vec![(); NUM_CELLS]).is_ok());
+        assert_eq!(
+            t.fill(vec![(); NUM_CELLS]).unwrap_err(),
+            TableError::AlreadyFilled
+        );
+    }
+
+    #[test]
+    fn fill_responses() {
+        // with our known-good strategy, try filling and make sure no error
+        let mut t: Table<Resp> = Table::new();
+        assert_eq!(t.fill(resps_from_buf(T1.as_bytes())), Ok(()));
+    }
+
+    #[test]
+    fn get_1() {
         // all 2-card hands against all dealer show cards have a best response
-        let t = Table::new(T1.as_bytes()).unwrap();
+        let mut t: Table<Resp> = Table::new();
+        assert_eq!(t.fill(resps_from_buf(T1.as_bytes())), Ok(()));
         for hand in all_club_pairs() {
             for dealer in all_clubs() {
-                assert!(t.best_resp(&hand, dealer).is_some());
+                assert!(t.get(&hand, dealer).is_ok());
             }
         }
     }
 
     #[test]
-    fn best_resp_2() {
+    fn get_2() {
         // 3-card hands should have a best response as long as they are worth 21 or less
-        let t = Table::new(T1.as_bytes()).unwrap();
+        let mut t: Table<Resp> = Table::new();
+        assert_eq!(t.fill(resps_from_buf(T1.as_bytes())), Ok(()));
         for hand in all_club_trios() {
             for dealer in all_clubs() {
-                assert_eq!(t.best_resp(&hand, dealer).is_some(), hand.value() <= 21);
+                assert_eq!(t.get(&hand, dealer).is_ok(), hand.value() <= 21);
             }
         }
     }
