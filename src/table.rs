@@ -180,24 +180,27 @@ where
         Ok(())
     }
 
-    /// Lookup and return the value stored at the given location in the table, if it exists.
-    /// The table must already be filled, else an error is returned. If the player's hand is bust,
-    /// then lookup would fail and an error is returned. There is no other reason for lookup to
-    /// fail, so if it does, that indicates a programming error and we panic.
-    pub fn get(&self, player_hand: &Hand, dealer_shows: Card) -> Result<T, TableError> {
-        if !self.is_filled {
-            return Err(TableError::NotFilled);
-        } else if player_hand.value() > 21 {
-            return Err(TableError::HandIsBust(player_hand.clone(), dealer_shows));
-        }
-        assert!(player_hand.value() >= 2);
-        let table = if player_hand.is_pair() {
+    fn get_subtable(&self, player_hand: &Hand) -> &HashMap<(u8, u8), T> {
+        if player_hand.is_pair() {
             &self.pair
         } else if player_hand.is_soft() {
             &self.soft
         } else {
             &self.hard
-        };
+        }
+    }
+
+    fn get_subtable_mut(&mut self, player_hand: &Hand) -> &mut HashMap<(u8, u8), T> {
+        if player_hand.is_pair() {
+            &mut self.pair
+        } else if player_hand.is_soft() {
+            &mut self.soft
+        } else {
+            &mut self.hard
+        }
+    }
+
+    fn key(player_hand: &Hand, dealer_shows: Card) -> (u8, u8) {
         let p = if player_hand.is_pair() && player_hand.cards[0].rank == Rank::RA {
             // player having a pair of aces is a special case. Hand::value() returns 12, which
             // causes a lookup in the pair take for a pair of 6s. Thus aces are stored with keys
@@ -211,7 +214,22 @@ where
         } else {
             dealer_shows.value()
         };
-        let key = (p, d);
+        (p, d)
+    }
+
+    /// Lookup and return the value stored at the given location in the table, if it exists.
+    /// The table must already be filled, else an error is returned. If the player's hand is bust,
+    /// then lookup would fail and an error is returned. There is no other reason for lookup to
+    /// fail, so if it does, that indicates a programming error and we panic.
+    pub fn get(&self, player_hand: &Hand, dealer_shows: Card) -> Result<T, TableError> {
+        if !self.is_filled {
+            return Err(TableError::NotFilled);
+        } else if player_hand.value() > 21 {
+            return Err(TableError::HandIsBust(player_hand.clone(), dealer_shows));
+        }
+        assert!(player_hand.value() >= 2);
+        let table = self.get_subtable(player_hand);
+        let key = Table::<T>::key(player_hand, dealer_shows);
         if let Some(v) = table.get(&key) {
             Ok(*v)
         } else {
@@ -223,6 +241,45 @@ where
                 player_hand.is_pair(),
                 key,
             ))
+        }
+    }
+
+    /// Update the given (player_hand, dealer_shows) key to have a new value and return the old
+    /// value.
+    ///
+    /// If the table has not been filled, return an error. If the player's hand is bust, then
+    /// lookup would fail and an error is returned. There is no other reason for lookup to fail, so
+    /// if it does, that indicates a programming error and we panic.
+    pub fn update(
+        &mut self,
+        player_hand: &Hand,
+        dealer_shows: Card,
+        val: T,
+    ) -> Result<T, TableError> {
+        if !self.is_filled {
+            return Err(TableError::NotFilled);
+        } else if player_hand.value() > 21 {
+            return Err(TableError::HandIsBust(player_hand.clone(), dealer_shows));
+        }
+        let _ = match self.get(player_hand, dealer_shows) {
+            Ok(v) => v,
+            Err(e) => panic!(format!(
+                "Table::get() failed with {} but that should be impossible",
+                e
+            )),
+        };
+        let table = self.get_subtable_mut(player_hand);
+        let key = Table::<T>::key(player_hand, dealer_shows);
+        match table.insert(key, val) {
+            Some(old) => Ok(old),
+            None => panic!(
+                "There was no old value at hand {} with dealer {}. soft={} pair={} key={:?}",
+                player_hand,
+                dealer_shows,
+                player_hand.is_soft(),
+                player_hand.is_pair(),
+                key
+            ),
         }
     }
 }
