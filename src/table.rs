@@ -230,7 +230,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::{resps_from_buf, Resp, Table, TableError, NUM_CELLS};
-    use crate::deck::{Card, Suit, ALL_RANKS};
+    use crate::deck::{Card, Rank, Suit, ALL_RANKS};
     use crate::hand::Hand;
 
     const T1: &str = "
@@ -309,6 +309,70 @@ PPPPPPPPPP
             }
         }
         hands
+    }
+
+    fn all_unique_table_keys() -> Vec<(usize, (Hand, Card))> {
+        const SUIT: Suit = Suit::Club;
+        let mut keys = vec![];
+        let hands = [
+            //hards
+            Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::R3, SUIT)]), // 5
+            Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::R4, SUIT)]), // 6
+            Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::R5, SUIT)]), // 7
+            Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::R6, SUIT)]), // 8
+            Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::R7, SUIT)]), // 9
+            Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::R8, SUIT)]), // 10
+            Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::R9, SUIT)]), // 11
+            Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::RT, SUIT)]), // 12
+            Hand::new(&[Card::new(Rank::R3, SUIT), Card::new(Rank::RT, SUIT)]), // 13
+            Hand::new(&[Card::new(Rank::R4, SUIT), Card::new(Rank::RT, SUIT)]), // 14
+            Hand::new(&[Card::new(Rank::R5, SUIT), Card::new(Rank::RT, SUIT)]), // 15
+            Hand::new(&[Card::new(Rank::R6, SUIT), Card::new(Rank::RT, SUIT)]), // 16
+            Hand::new(&[Card::new(Rank::R7, SUIT), Card::new(Rank::RT, SUIT)]), // 17
+            Hand::new(&[Card::new(Rank::R8, SUIT), Card::new(Rank::RT, SUIT)]), // 18
+            Hand::new(&[Card::new(Rank::R9, SUIT), Card::new(Rank::RT, SUIT)]), // 19
+            Hand::new(&[
+                Card::new(Rank::R8, SUIT),
+                Card::new(Rank::R2, SUIT),
+                Card::new(Rank::RT, SUIT),
+            ]), // 20, with 3 cards to avoid soft (9, A) and pair (10, 10)
+            Hand::new(&[
+                Card::new(Rank::R6, SUIT),
+                Card::new(Rank::R6, SUIT),
+                Card::new(Rank::R9, SUIT),
+            ]), // 21, with 3 cards and no soft ace
+            // softs
+            Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::RA, SUIT)]), // 13
+            Hand::new(&[Card::new(Rank::R3, SUIT), Card::new(Rank::RA, SUIT)]), // 14
+            Hand::new(&[Card::new(Rank::R4, SUIT), Card::new(Rank::RA, SUIT)]), // 15
+            Hand::new(&[Card::new(Rank::R5, SUIT), Card::new(Rank::RA, SUIT)]), // 16
+            Hand::new(&[Card::new(Rank::R6, SUIT), Card::new(Rank::RA, SUIT)]), // 17
+            Hand::new(&[Card::new(Rank::R7, SUIT), Card::new(Rank::RA, SUIT)]), // 18
+            Hand::new(&[Card::new(Rank::R8, SUIT), Card::new(Rank::RA, SUIT)]), // 19
+            Hand::new(&[Card::new(Rank::R9, SUIT), Card::new(Rank::RA, SUIT)]), // 20
+            Hand::new(&[Card::new(Rank::RT, SUIT), Card::new(Rank::RA, SUIT)]), // 21
+            // pairs
+            Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::R2, SUIT)]), // 2s
+            Hand::new(&[Card::new(Rank::R3, SUIT), Card::new(Rank::R3, SUIT)]), // 3s
+            Hand::new(&[Card::new(Rank::R4, SUIT), Card::new(Rank::R4, SUIT)]), // 4s
+            Hand::new(&[Card::new(Rank::R5, SUIT), Card::new(Rank::R5, SUIT)]), // 5s
+            Hand::new(&[Card::new(Rank::R6, SUIT), Card::new(Rank::R6, SUIT)]), // 6s
+            Hand::new(&[Card::new(Rank::R7, SUIT), Card::new(Rank::R7, SUIT)]), // 7s
+            Hand::new(&[Card::new(Rank::R8, SUIT), Card::new(Rank::R8, SUIT)]), // 8s
+            Hand::new(&[Card::new(Rank::R9, SUIT), Card::new(Rank::R9, SUIT)]), // 9s
+            Hand::new(&[Card::new(Rank::RT, SUIT), Card::new(Rank::RT, SUIT)]), // 10s
+            Hand::new(&[Card::new(Rank::RA, SUIT), Card::new(Rank::RA, SUIT)]), // As
+        ];
+        for hand in hands.iter() {
+            for card in ALL_RANKS
+                .iter()
+                .filter(|r| ![Rank::RJ, Rank::RQ, Rank::RK].contains(r))
+                .map(|r| Card::new(*r, SUIT))
+            {
+                keys.push((hand.clone(), card));
+            }
+        }
+        keys.into_iter().enumerate().collect()
     }
 
     #[test]
@@ -397,8 +461,8 @@ PPPPPPPPPP
     #[test]
     fn get_pair_aces() {
         // Fetches from the correct place when player hand has pair of aces, which is handled as a
-        // special case
-        use crate::deck::Rank;
+        // special case. This is/should be handled implicitly by the get_all() test, but why not
+        // make double sure
         use std::iter::repeat;
         const SUIT: Suit = Suit::Club;
         const NOT_VAL: u8 = 0;
@@ -406,16 +470,25 @@ PPPPPPPPPP
         let mut t: Table<u8> = Table::new();
         // fill all but the last cell with NOT_VAL. Last cell should have key [(A, A), A], which
         // has a pair of aces for the player hand
-        assert_eq!(
-            t.fill(
-                repeat(NOT_VAL)
-                    .take(NUM_CELLS - 1)
-                    .chain(repeat(VAL).take(1))
-            ),
-            Ok(())
-        );
+        t.fill(
+            repeat(NOT_VAL)
+                .take(NUM_CELLS - 1)
+                .chain(repeat(VAL).take(1)),
+        )
+        .unwrap();
         let h = Hand::new(&[Card::new(Rank::RA, SUIT), Card::new(Rank::RA, SUIT)]);
         let d = Card::new(Rank::RA, SUIT);
         assert_eq!(t.get(&h, d).unwrap(), VAL);
+    }
+
+    #[test]
+    fn get_all() {
+        // all values are stored in the expected positions
+        let mut t: Table<u16> = Table::new();
+        t.fill(0..360).unwrap();
+        for (i, key) in all_unique_table_keys().into_iter() {
+            //eprintln!("{} {:?}", i, key);
+            assert_eq!(t.get(&key.0, key.1).unwrap(), i as u16);
+        }
     }
 }
