@@ -140,7 +140,6 @@ where
             for dealer_up in 2..=11 {
                 let k = (player_value, dealer_up);
                 if let Some(v) = vals.next() {
-                    //eprintln!("{:?} {:?}", k, v);
                     assert!(self.hard.insert(k, v).is_none());
                     cell_idx += 1;
                 } else {
@@ -153,7 +152,6 @@ where
             for dealer_up in 2..=11 {
                 let k = (player_value, dealer_up);
                 if let Some(v) = vals.next() {
-                    //eprintln!("{:?} {:?}", k, v);
                     assert!(self.soft.insert(k, v).is_none());
                     cell_idx += 1;
                 } else {
@@ -167,7 +165,6 @@ where
             for dealer_up in 2..=11 {
                 let k = (*player_value, dealer_up);
                 if let Some(v) = vals.next() {
-                    //eprintln!("{:?} {:?}", k, v);
                     assert!(self.pair.insert(k, v).is_none());
                     cell_idx += 1;
                 } else {
@@ -334,7 +331,6 @@ PPPPPPPPPP
         // Should fail to fill with too few items
         for count in NUM_CELLS + 1..NUM_CELLS + 10 {
             let mut t = Table::<()>::new();
-            eprintln!("{}", count);
             assert_eq!(
                 t.fill(vec![(); count]).unwrap_err(),
                 TableError::IncorrectFillLength(NUM_CELLS, NUM_CELLS + 1)
