@@ -2,7 +2,7 @@ use blackjack::deck::{Card, Deck};
 use blackjack::hand::Hand;
 use blackjack::playstats::PlayStats;
 use blackjack::table::{resp_from_char, resps_from_buf, Resp, Table};
-use clap;
+use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, App, Arg};
 use serde::Serialize;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
@@ -56,12 +56,20 @@ where
     }
 }
 
+arg_enum! {
+    #[derive(PartialEq, Debug)]
+    enum StatsSaveStrat {
+        Never,
+        EveryHand,
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let matches = clap::App::new(clap::crate_name!())
-        .author(clap::crate_authors!())
-        .version(clap::crate_version!())
+    let matches = App::new(crate_name!())
+        .author(crate_authors!())
+        .version(crate_version!())
         .arg(
-            clap::Arg::with_name("table")
+            Arg::with_name("table")
                 .short("t")
                 .long("table")
                 .value_name("FILE")
@@ -69,12 +77,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .required(true),
         )
         .arg(
-            clap::Arg::with_name("stats")
+            Arg::with_name("stats")
                 .short("s")
                 .long("stats")
                 .value_name("FILE")
                 .help("Read/write play stats from the file")
                 .default_value("play-stats.json"),
+        )
+        .arg(
+            Arg::with_name("statssave")
+                .long("save-stats")
+                .possible_values(&StatsSaveStrat::variants())
+                .case_insensitive(true)
+                .default_value("EveryHand")
+                .value_name("WHEN")
+                .help("When to save play statistics to disk"),
         )
         .get_matches();
     let mut deck = Deck::new_infinite();
@@ -85,27 +102,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // safe to unwrap because --table is required
             .open(matches.value_of("table").unwrap())?,
     ))?;
-    // safe to unwrap bc --stats is required
-    create_if_not_exist(matches.value_of("stats").unwrap(), def_playstats_table())?;
-    let mut stats: Table<PlayStats> = serde_json::from_reader(
-        OpenOptions::new()
-            .read(true)
-            .open(matches.value_of("stats").unwrap())
-            .unwrap(),
-    )
-    .unwrap();
+    let stats_fname = matches.value_of("stats").unwrap();
+    let save_stats = value_t!(matches, "statssave", StatsSaveStrat)?;
+    let mut stats = match save_stats {
+        StatsSaveStrat::Never => def_playstats_table(),
+        _ => {
+            // safe to unwrap bc --stats is required
+            create_if_not_exist(stats_fname, def_playstats_table())?;
+            serde_json::from_reader(OpenOptions::new().read(true).open(stats_fname).unwrap())?
+        }
+    };
     loop {
         let player = Hand::new(&[deck.draw()?, deck.draw()?]);
         let dealer_up = deck.draw()?;
         if let Some(choice) = prompt(&player, dealer_up)? {
-            // safe to unwrap because table is filled, player has 21 or less, and all other errors
-            // are panic!()
-            let best = table.get(&player, dealer_up).unwrap();
+            let best = table.get(&player, dealer_up)?;
             print!("{} ", choice);
             if choice == best {
                 println!("correct");
             } else {
                 println!("wrong. Should {}", best);
+            }
+            let mut stat = stats.get(&player, dealer_up)?;
+            stat.inc(choice == best);
+            stats.update(&player, dealer_up, stat)?;
+            match save_stats {
+                StatsSaveStrat::Never => {}
+                StatsSaveStrat::EveryHand => serde_json::to_writer(
+                    OpenOptions::new()
+                        .write(true)
+                        .truncate(true)
+                        .open(stats_fname)?,
+                    &stats,
+                )?,
             }
         } else {
             break;
