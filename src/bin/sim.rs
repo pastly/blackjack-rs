@@ -35,6 +35,10 @@ fn prompt(p: &Hand, d: Card) -> Result<Option<Resp>, io::Error> {
     }
 }
 
+/// Create the given file if it doesn't already exist. If it needs to be created, fill it with the
+/// given serializable data. Otherwise don't use the given data at all. Bubbles up any file system
+/// errors (other than the error of "already exists." Panics if unable to serialize/write the data
+/// to the file.
 fn create_if_not_exist<T>(fname: &str, data: T) -> Result<(), io::Error>
 where
     T: Serialize,
