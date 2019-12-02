@@ -10,6 +10,51 @@ const HARD_CELLS: usize = 17 * 10;
 const SOFT_CELLS: usize = 9 * 10;
 const PAIR_CELLS: usize = 10 * 10;
 const NUM_CELLS: usize = HARD_CELLS + SOFT_CELLS + PAIR_CELLS;
+#[rustfmt::skip]
+const HARD_KEYS: [(u8, u8); HARD_CELLS] = [
+    (5, 2), (5, 3), (5, 4), (5, 5), (5, 6), (5, 7), (5, 8), (5, 9), (5, 10), (5, 11),
+    (6, 2), (6, 3), (6, 4), (6, 5), (6, 6), (6, 7), (6, 8), (6, 9), (6, 10), (6, 11),
+    (7, 2), (7, 3), (7, 4), (7, 5), (7, 6), (7, 7), (7, 8), (7, 9), (7, 10), (7, 11),
+    (8, 2), (8, 3), (8, 4), (8, 5), (8, 6), (8, 7), (8, 8), (8, 9), (8, 10), (8, 11),
+    (9, 2), (9, 3), (9, 4), (9, 5), (9, 6), (9, 7), (9, 8), (9, 9), (9, 10), (9, 11),
+    (10, 2), (10, 3), (10, 4), (10, 5), (10, 6), (10, 7), (10, 8), (10, 9), (10, 10), (10, 11),
+    (11, 2), (11, 3), (11, 4), (11, 5), (11, 6), (11, 7), (11, 8), (11, 9), (11, 10), (11, 11),
+    (12, 2), (12, 3), (12, 4), (12, 5), (12, 6), (12, 7), (12, 8), (12, 9), (12, 10), (12, 11),
+    (13, 2), (13, 3), (13, 4), (13, 5), (13, 6), (13, 7), (13, 8), (13, 9), (13, 10), (13, 11),
+    (14, 2), (14, 3), (14, 4), (14, 5), (14, 6), (14, 7), (14, 8), (14, 9), (14, 10), (14, 11),
+    (15, 2), (15, 3), (15, 4), (15, 5), (15, 6), (15, 7), (15, 8), (15, 9), (15, 10), (15, 11),
+    (16, 2), (16, 3), (16, 4), (16, 5), (16, 6), (16, 7), (16, 8), (16, 9), (16, 10), (16, 11),
+    (17, 2), (17, 3), (17, 4), (17, 5), (17, 6), (17, 7), (17, 8), (17, 9), (17, 10), (17, 11),
+    (18, 2), (18, 3), (18, 4), (18, 5), (18, 6), (18, 7), (18, 8), (18, 9), (18, 10), (18, 11),
+    (19, 2), (19, 3), (19, 4), (19, 5), (19, 6), (19, 7), (19, 8), (19, 9), (19, 10), (19, 11),
+    (20, 2), (20, 3), (20, 4), (20, 5), (20, 6), (20, 7), (20, 8), (20, 9), (20, 10), (20, 11),
+    (21, 2), (21, 3), (21, 4), (21, 5), (21, 6), (21, 7), (21, 8), (21, 9), (21, 10), (21, 11),
+];
+#[rustfmt::skip]
+const SOFT_KEYS: [(u8, u8); SOFT_CELLS] = [
+    (13, 2), (13, 3), (13, 4), (13, 5), (13, 6), (13, 7), (13, 8), (13, 9), (13, 10), (13, 11),
+    (14, 2), (14, 3), (14, 4), (14, 5), (14, 6), (14, 7), (14, 8), (14, 9), (14, 10), (14, 11),
+    (15, 2), (15, 3), (15, 4), (15, 5), (15, 6), (15, 7), (15, 8), (15, 9), (15, 10), (15, 11),
+    (16, 2), (16, 3), (16, 4), (16, 5), (16, 6), (16, 7), (16, 8), (16, 9), (16, 10), (16, 11),
+    (17, 2), (17, 3), (17, 4), (17, 5), (17, 6), (17, 7), (17, 8), (17, 9), (17, 10), (17, 11),
+    (18, 2), (18, 3), (18, 4), (18, 5), (18, 6), (18, 7), (18, 8), (18, 9), (18, 10), (18, 11),
+    (19, 2), (19, 3), (19, 4), (19, 5), (19, 6), (19, 7), (19, 8), (19, 9), (19, 10), (19, 11),
+    (20, 2), (20, 3), (20, 4), (20, 5), (20, 6), (20, 7), (20, 8), (20, 9), (20, 10), (20, 11),
+    (21, 2), (21, 3), (21, 4), (21, 5), (21, 6), (21, 7), (21, 8), (21, 9), (21, 10), (21, 11),
+];
+#[rustfmt::skip]
+const PAIR_KEYS: [(u8, u8); PAIR_CELLS] = [
+    (4, 2), (4, 3), (4, 4), (4, 5), (4, 6), (4, 7), (4, 8), (4, 9), (4, 10), (4, 11),
+    (6, 2), (6, 3), (6, 4), (6, 5), (6, 6), (6, 7), (6, 8), (6, 9), (6, 10), (6, 11),
+    (8, 2), (8, 3), (8, 4), (8, 5), (8, 6), (8, 7), (8, 8), (8, 9), (8, 10), (8, 11),
+    (10, 2), (10, 3), (10, 4), (10, 5), (10, 6), (10, 7), (10, 8), (10, 9), (10, 10), (10, 11),
+    (12, 2), (12, 3), (12, 4), (12, 5), (12, 6), (12, 7), (12, 8), (12, 9), (12, 10), (12, 11),
+    (14, 2), (14, 3), (14, 4), (14, 5), (14, 6), (14, 7), (14, 8), (14, 9), (14, 10), (14, 11),
+    (16, 2), (16, 3), (16, 4), (16, 5), (16, 6), (16, 7), (16, 8), (16, 9), (16, 10), (16, 11),
+    (18, 2), (18, 3), (18, 4), (18, 5), (18, 6), (18, 7), (18, 8), (18, 9), (18, 10), (18, 11),
+    (20, 2), (20, 3), (20, 4), (20, 5), (20, 6), (20, 7), (20, 8), (20, 9), (20, 10), (20, 11),
+    (22, 2), (22, 3), (22, 4), (22, 5), (22, 6), (22, 7), (22, 8), (22, 9), (22, 10), (22, 11),
+];
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Resp {
@@ -63,6 +108,7 @@ pub enum TableError {
     AlreadyFilled,
     IncorrectFillLength(usize, usize),
     HandIsBust(Hand, Card),
+    MissingKeys(String),
 }
 
 impl std::error::Error for TableError {}
@@ -83,6 +129,15 @@ impl fmt::Display for TableError {
                 f,
                 "Cannot find item at {}/{} because hand is bust",
                 hand, card
+            ),
+            TableError::MissingKeys(s) => write!(
+                f,
+                "Table missing keys.{}",
+                if s.is_empty() {
+                    String::new()
+                } else {
+                    String::from(" ") + s
+                }
             ),
         }
     }
@@ -225,8 +280,8 @@ where
 
     /// Lookup and return the value stored at the given location in the table, if it exists.
     /// The table must already be filled, else an error is returned. If the player's hand is bust,
-    /// then lookup would fail and an error is returned. There is no other reason for lookup to
-    /// fail, so if it does, that indicates a programming error and we panic.
+    /// then lookup would fail and an error is returned. If a lookup fails because the calcuated
+    /// key is missing (which should be impossible, but ... ya know ...), then return an error.
     pub fn get(&self, player_hand: &Hand, dealer_shows: Card) -> Result<T, TableError> {
         if !self.is_filled {
             return Err(TableError::NotFilled);
@@ -239,14 +294,14 @@ where
         if let Some(v) = table.get(&key) {
             Ok(*v)
         } else {
-            panic!(format!(
-                "Unable to find best resp for hand {} with dealer {}. soft={} pair={}. key={:?}",
+            Err(TableError::MissingKeys(format!(
+                "Unable to find value for hand {} with dealer {}. soft={} pair={}. key={:?}",
                 player_hand,
                 dealer_shows,
                 player_hand.is_soft(),
                 player_hand.is_pair(),
                 key,
-            ))
+            )))
         }
     }
 
@@ -254,8 +309,8 @@ where
     /// value.
     ///
     /// If the table has not been filled, return an error. If the player's hand is bust, then
-    /// lookup would fail and an error is returned. There is no other reason for lookup to fail, so
-    /// if it does, that indicates a programming error and we panic.
+    /// lookup would fail and an error is returned. Even after successfully inserting the new
+    /// value, if there was no original value, will return Err(TableError::MissingKeys)
     pub fn update(
         &mut self,
         player_hand: &Hand,
@@ -267,25 +322,38 @@ where
         } else if player_hand.value() > 21 {
             return Err(TableError::HandIsBust(player_hand.clone(), dealer_shows));
         }
-        let _ = match self.get(player_hand, dealer_shows) {
-            Ok(v) => v,
-            Err(e) => panic!(format!(
-                "Table::get() failed with {} but that should be impossible",
-                e
-            )),
-        };
         let table = self.get_subtable_mut(player_hand);
         let key = Table::<T>::key(player_hand, dealer_shows);
         match table.insert(key, val) {
             Some(old) => Ok(old),
-            None => panic!(
+            None => Err(TableError::MissingKeys(format!(
                 "There was no old value at hand {} with dealer {}. soft={} pair={} key={:?}",
                 player_hand,
                 dealer_shows,
                 player_hand.is_soft(),
                 player_hand.is_pair(),
                 key
-            ),
+            ))),
+        }
+    }
+
+    /// An internal-only sanity check for help during final deserialization
+    ///
+    /// Checks if the given table has all the correct keys in its subtables
+    #[rustfmt::skip]
+    fn has_all_keys(&self) -> bool {
+        if self.hard.len() != HARD_CELLS
+            || self.soft.len() != SOFT_CELLS
+            || self.pair.len() != PAIR_CELLS
+        {
+            false
+        } else if HARD_KEYS.iter().filter(|k| !self.hard.contains_key(k)).count() > 0
+            || SOFT_KEYS.iter().filter(|k| !self.soft.contains_key(k)).count() > 0
+            || PAIR_KEYS.iter().filter(|k| !self.pair.contains_key(k)).count() > 0
+        {
+            false
+        } else {
+            true
         }
     }
 
@@ -293,13 +361,12 @@ where
     ///
     /// Takes arrays for the hard, soft, and pair subtables, checks they are the correct length,
     /// assumes they have all the right keys in their key/value pairs, builds the Table, and sets
-    /// its is_filled field to true. Maliciously crafted input to this function can lead to a Table
-    /// that panics on Table::get() or Table::update().
+    /// its is_filled field to true.
     fn from_raw_parts(
         hard: Vec<((u8, u8), T)>,
         soft: Vec<((u8, u8), T)>,
         pair: Vec<((u8, u8), T)>,
-    ) -> Self {
+    ) -> Result<Self, TableError> {
         assert_eq!(hard.len(), HARD_CELLS);
         assert_eq!(soft.len(), SOFT_CELLS);
         assert_eq!(pair.len(), PAIR_CELLS);
@@ -324,11 +391,18 @@ where
             }
             d
         };
-        Self {
+        let t = Self {
             hard,
             soft,
             pair,
             is_filled: true,
+        };
+        if t.has_all_keys() {
+            Ok(t)
+        } else {
+            Err(TableError::MissingKeys(
+                "Cannot contruct from raw parts".to_owned(),
+            ))
         }
     }
 }
@@ -371,13 +445,15 @@ where
         assert_eq!(hard.len(), HARD_CELLS);
         assert_eq!(soft.len(), SOFT_CELLS);
         assert_eq!(pair.len(), PAIR_CELLS);
-        Ok(Self::from_raw_parts(hard, soft, pair))
+        //Ok(Self::from_raw_parts(hard, soft, pair))
+        Self::from_raw_parts(hard, soft, pair).map_err(serde::de::Error::custom)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{resps_from_buf, Resp, Table, TableError, NUM_CELLS};
+    use super::{resps_from_buf, Resp, Table, TableError};
+    use super::{HARD_CELLS, NUM_CELLS, PAIR_CELLS, SOFT_CELLS};
     use crate::deck::{Card, Rank, Suit, ALL_RANKS};
     use crate::hand::Hand;
     use serde_json;
@@ -713,9 +789,19 @@ PPPPPPPPPP
     }
 
     #[test]
-    #[ignore]
     fn from_raw_parts_missing_keys() {
         // sending Vecs with missing keys to Table::from_raw_parts() causes it to fail to build a
         // Table
+        let h = vec![((0, 0), 0); HARD_CELLS];
+        let s = vec![((0, 0), 0); SOFT_CELLS];
+        let p = vec![((0, 0), 0); PAIR_CELLS];
+        if let Err(e) = Table::from_raw_parts(h, s, p) {
+            match e {
+                TableError::MissingKeys(_) => {}
+                _ => panic!(format!("Got the wrong type of error: {}", e)),
+            }
+        } else {
+            panic!("Should have failed Table::from_raw_parts()");
+        }
     }
 }
