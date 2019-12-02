@@ -46,6 +46,7 @@ where
     match OpenOptions::new().create_new(true).write(true).open(fname) {
         Ok(fd) => {
             // able to create the file, so we need to fill it
+            println!("Creating and filling {}", fname);
             serde_json::to_writer(fd, &data).unwrap();
             Ok(())
         }
@@ -106,13 +107,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // safe to unwrap because --table is required
             .open(matches.value_of("table").unwrap())?,
     ))?;
+    // safe to unwrap bc --stats is required
     let stats_fname = matches.value_of("stats").unwrap();
     let save_stats = value_t!(matches, "statssave", StatsSaveStrat)?;
     let mut stats = match save_stats {
         StatsSaveStrat::Never => def_playstats_table(),
         _ => {
-            // safe to unwrap bc --stats is required
             create_if_not_exist(stats_fname, def_playstats_table())?;
+            println!("Reading PlayStats from {}", stats_fname);
             serde_json::from_reader(OpenOptions::new().read(true).open(stats_fname).unwrap())?
         }
     };
