@@ -1,9 +1,18 @@
 use blackjack::deck::{Card, Deck};
 use blackjack::hand::Hand;
+use blackjack::playstats::PlayStats;
 use blackjack::table::{resp_from_char, resps_from_buf, Resp, Table};
 use clap;
+use serde::Serialize;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
+
+fn def_playstats_table() -> Table<PlayStats> {
+    const NUM_CELLS: usize = 10 * (17 + 9 + 10);
+    let mut t = Table::new();
+    t.fill(vec![PlayStats::new(); NUM_CELLS]).unwrap();
+    t
+}
 
 fn prompt(p: &Hand, d: Card) -> Result<Option<Resp>, io::Error> {
     loop {
@@ -26,6 +35,27 @@ fn prompt(p: &Hand, d: Card) -> Result<Option<Resp>, io::Error> {
     }
 }
 
+fn create_if_not_exist<T>(fname: &str, data: T) -> Result<(), io::Error>
+where
+    T: Serialize,
+{
+    match OpenOptions::new().create_new(true).write(true).open(fname) {
+        Ok(fd) => {
+            // able to create the file, so we need to fill it
+            serde_json::to_writer(fd, &data).unwrap();
+            Ok(())
+        }
+        Err(e) => {
+            // unable to create the file, and that might be because it already exists.
+            // ignore errors from it already existing, but bubble up all others
+            match e.kind() {
+                io::ErrorKind::AlreadyExists => Ok(()),
+                _ => Err(e),
+            }
+        }
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = clap::App::new(clap::crate_name!())
         .author(clap::crate_authors!())
@@ -38,6 +68,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Table of ideal moves")
                 .required(true),
         )
+        .arg(
+            clap::Arg::with_name("stats")
+                .short("s")
+                .long("stats")
+                .value_name("FILE")
+                .help("Read/write play stats from the file")
+                .default_value("play-stats.json"),
+        )
         .get_matches();
     let mut deck = Deck::new_infinite();
     let mut table = Table::new();
@@ -47,6 +85,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // safe to unwrap because --table is required
             .open(matches.value_of("table").unwrap())?,
     ))?;
+    // safe to unwrap bc --stats is required
+    create_if_not_exist(matches.value_of("stats").unwrap(), def_playstats_table())?;
+    let mut stats: Table<PlayStats> = serde_json::from_reader(
+        OpenOptions::new()
+            .read(true)
+            .open(matches.value_of("stats").unwrap())
+            .unwrap(),
+    )
+    .unwrap();
     loop {
         let player = Hand::new(&[deck.draw()?, deck.draw()?]);
         let dealer_up = deck.draw()?;

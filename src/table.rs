@@ -1,10 +1,15 @@
 use crate::deck::{Card, Rank};
 use crate::hand::Hand;
+use serde::de::{Deserialize, Deserializer};
+use serde::ser::{Serialize, SerializeSeq, Serializer};
 use std::collections::HashMap;
 use std::fmt;
 use std::io::Read;
 
-const NUM_CELLS: usize = 10 * (17 + 9 + 10);
+const HARD_CELLS: usize = 17 * 10;
+const SOFT_CELLS: usize = 9 * 10;
+const PAIR_CELLS: usize = 10 * 10;
+const NUM_CELLS: usize = HARD_CELLS + SOFT_CELLS + PAIR_CELLS;
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Resp {
@@ -96,6 +101,7 @@ impl fmt::Display for TableError {
 /// looks like (e.g. if used to store the best move for a player to make), see the blackjack
 /// strategy cards on the Wizard of Odds website:
 /// https://wizardofodds.com/games/blackjack/strategy/calculator/.
+#[derive(Debug, PartialEq)]
 pub struct Table<T>
 where
     // might not all be necessary
@@ -282,6 +288,91 @@ where
             ),
         }
     }
+
+    /// An internal-only constructor for help during final deserialization
+    ///
+    /// Takes arrays for the hard, soft, and pair subtables, checks they are the correct length,
+    /// assumes they have all the right keys in their key/value pairs, builds the Table, and sets
+    /// its is_filled field to true. Maliciously crafted input to this function can lead to a Table
+    /// that panics on Table::get() or Table::update().
+    fn from_raw_parts(
+        hard: Vec<((u8, u8), T)>,
+        soft: Vec<((u8, u8), T)>,
+        pair: Vec<((u8, u8), T)>,
+    ) -> Self {
+        assert_eq!(hard.len(), HARD_CELLS);
+        assert_eq!(soft.len(), SOFT_CELLS);
+        assert_eq!(pair.len(), PAIR_CELLS);
+        let hard = {
+            let mut d = HashMap::<(u8, u8), T>::new();
+            for kv in hard.into_iter() {
+                d.insert(kv.0, kv.1);
+            }
+            d
+        };
+        let soft = {
+            let mut d = HashMap::<(u8, u8), T>::new();
+            for kv in soft.into_iter() {
+                d.insert(kv.0, kv.1);
+            }
+            d
+        };
+        let pair = {
+            let mut d = HashMap::<(u8, u8), T>::new();
+            for kv in pair.into_iter() {
+                d.insert(kv.0, kv.1);
+            }
+            d
+        };
+        Self {
+            hard,
+            soft,
+            pair,
+            is_filled: true,
+        }
+    }
+}
+
+impl<T> Serialize for Table<T>
+where
+    T: PartialEq + Copy + Clone + Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let len = self.hard.len() + self.soft.len() + self.pair.len();
+        let mut seq = serializer.serialize_seq(Some(len))?;
+        for e in self.hard.iter() {
+            seq.serialize_element(&e)?;
+        }
+        for e in self.soft.iter() {
+            seq.serialize_element(&e)?;
+        }
+        for e in self.pair.iter() {
+            seq.serialize_element(&e)?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de, T> Deserialize<'de> for Table<T>
+where
+    T: PartialEq + Copy + Clone + Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let mut hard: Vec<((u8, u8), T)> = Vec::deserialize(deserializer)?;
+        assert_eq!(hard.len(), NUM_CELLS);
+        let mut soft = hard.split_off(HARD_CELLS);
+        let pair = soft.split_off(SOFT_CELLS);
+        assert_eq!(hard.len(), HARD_CELLS);
+        assert_eq!(soft.len(), SOFT_CELLS);
+        assert_eq!(pair.len(), PAIR_CELLS);
+        Ok(Self::from_raw_parts(hard, soft, pair))
+    }
 }
 
 #[cfg(test)]
@@ -289,6 +380,7 @@ mod tests {
     use super::{resps_from_buf, Resp, Table, TableError, NUM_CELLS};
     use crate::deck::{Card, Rank, Suit, ALL_RANKS};
     use crate::hand::Hand;
+    use serde_json;
     use std::iter::repeat;
 
     const SUIT: Suit = Suit::Club;
@@ -608,5 +700,22 @@ PPPPPPPPPP
             // future gets should return new value
             assert_eq!(t.get(&key.0, key.1).unwrap(), i * 2);
         }
+    }
+
+    #[test]
+    fn serialize_identity() {
+        // result of serialize -> deserialize is the same as the input
+        let mut t_in: Table<u16> = Table::new();
+        t_in.fill(0..NUM_CELLS as u16).unwrap();
+        let bytes = serde_json::to_vec(&t_in).unwrap();
+        let t_out: Table<u16> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(t_in, t_out);
+    }
+
+    #[test]
+    #[ignore]
+    fn from_raw_parts_missing_keys() {
+        // sending Vecs with missing keys to Table::from_raw_parts() causes it to fail to build a
+        // Table
     }
 }

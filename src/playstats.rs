@@ -1,4 +1,6 @@
-#[derive(PartialEq, Default, Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, PartialEq, Copy, Clone, Default, Debug)]
 pub struct PlayStats {
     seen: u16,
     correct: u16,
