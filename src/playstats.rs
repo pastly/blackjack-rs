@@ -30,6 +30,14 @@ impl PlayStats {
             self.correct += amt;
         }
     }
+
+    pub fn seen(&self) -> u16 {
+        self.seen
+    }
+
+    pub fn correct(&self) -> u16 {
+        self.correct
+    }
 }
 
 #[cfg(test)]
