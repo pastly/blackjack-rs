@@ -1,5 +1,5 @@
 use crate::deck::{Card, Rank};
-use crate::hand::Hand;
+use crate::hand::{Hand, HandType};
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 use std::collections::HashMap;
@@ -55,6 +55,24 @@ const PAIR_KEYS: [(u8, u8); PAIR_CELLS] = [
     (20, 2), (20, 3), (20, 4), (20, 5), (20, 6), (20, 7), (20, 8), (20, 9), (20, 10), (20, 11),
     (22, 2), (22, 3), (22, 4), (22, 5), (22, 6), (22, 7), (22, 8), (22, 9), (22, 10), (22, 11),
 ];
+
+/// A user-visable "key" into Table. Not actually used as a key.
+#[derive(Debug)]
+pub struct TableKey {
+    hand: HandType,
+    player: u8,
+    dealer: u8,
+}
+
+impl TableKey {
+    fn new(hand: HandType, player: u8, dealer: u8) -> Self {
+        Self {
+            hand,
+            player,
+            dealer,
+        }
+    }
+}
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Resp {
@@ -417,6 +435,22 @@ where
         let h = self.hard.values_mut();
         let s = self.soft.values_mut();
         let p = self.pair.values_mut();
+        h.chain(s).chain(p)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (TableKey, &T)> {
+        let h = self
+            .hard
+            .iter()
+            .map(|(k, v)| (TableKey::new(HandType::Hard, k.0, k.1), v));
+        let s = self
+            .soft
+            .iter()
+            .map(|(k, v)| (TableKey::new(HandType::Soft, k.0, k.1), v));
+        let p = self
+            .pair
+            .iter()
+            .map(|(k, v)| (TableKey::new(HandType::Pair, k.0, k.1), v));
         h.chain(s).chain(p)
     }
 }

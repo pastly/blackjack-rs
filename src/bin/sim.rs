@@ -23,6 +23,9 @@ fn print_game_stats(stats: &Table<PlayStats>) {
         num_correct as f32 / num_seen as f32 * 100.0,
         num_seen
     );
+    //for item in stats.iter() {
+    //    println!("{:?}", item);
+    //}
 }
 
 fn prompt(p: &Hand, d: Card) -> Result<Option<Resp>, io::Error> {

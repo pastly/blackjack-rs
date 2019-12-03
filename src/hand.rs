@@ -1,6 +1,14 @@
 use crate::deck::{Card, Rank};
 use std::fmt;
 
+// might not all be necessary
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum HandType {
+    Hard,
+    Soft,
+    Pair,
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Hand {
     pub(crate) cards: Vec<Card>,
