@@ -14,6 +14,17 @@ fn def_playstats_table() -> Table<PlayStats> {
     t
 }
 
+fn print_game_stats(stats: &Table<PlayStats>) {
+    let (num_seen, num_correct) = stats
+        .values()
+        .fold((0, 0), |acc, s| (acc.0 + s.seen(), acc.1 + s.correct()));
+    println!(
+        "{:.2}% of {} recorded games correct",
+        num_correct as f32 / num_seen as f32 * 100.0,
+        num_seen
+    );
+}
+
 fn prompt(p: &Hand, d: Card) -> Result<Option<Resp>, io::Error> {
     loop {
         print!("{} / {} > ", p, d);
@@ -118,6 +129,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             serde_json::from_reader(OpenOptions::new().read(true).open(stats_fname).unwrap())?
         }
     };
+    print_game_stats(&stats);
     loop {
         let player = Hand::new(&[deck.draw()?, deck.draw()?]);
         let dealer_up = deck.draw()?;
@@ -128,6 +140,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("correct");
             } else {
                 println!("wrong. Should {}", best);
+                print_game_stats(&stats);
             }
             let mut stat = stats.get(&player, dealer_up)?;
             stat.inc(choice == best);

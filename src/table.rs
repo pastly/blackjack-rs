@@ -405,6 +405,20 @@ where
             ))
         }
     }
+
+    pub fn values(&self) -> impl Iterator<Item = &T> {
+        let h = self.hard.values();
+        let s = self.soft.values();
+        let p = self.pair.values();
+        h.chain(s).chain(p)
+    }
+
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        let h = self.hard.values_mut();
+        let s = self.soft.values_mut();
+        let p = self.pair.values_mut();
+        h.chain(s).chain(p)
+    }
 }
 
 impl<T> Serialize for Table<T>
