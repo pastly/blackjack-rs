@@ -3,15 +3,39 @@ use blackjack::hand::Hand;
 use blackjack::playstats::PlayStats;
 use blackjack::table::{resp_from_char, resps_from_buf, Resp, Table};
 use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, App, Arg};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
+use xz2::read::XzDecoder;
+use xz2::write::XzEncoder;
 
 fn def_playstats_table() -> Table<PlayStats> {
     const NUM_CELLS: usize = 10 * (17 + 9 + 10);
     let mut t = Table::new();
     t.fill(vec![PlayStats::new(); NUM_CELLS]).unwrap();
     t
+}
+
+fn write_maybexz<T>(fname: &str, fd: impl Write, data: &T) -> Result<(), serde_json::error::Error>
+where
+    T: Serialize,
+{
+    if fname.ends_with(".xz") {
+        serde_json::to_writer(XzEncoder::new(fd, 9), &data)
+    } else {
+        serde_json::to_writer(fd, &data)
+    }
+}
+
+fn read_maybexz<T>(fname: &str, fd: impl Read) -> Result<T, serde_json::error::Error>
+where
+    for<'de> T: Deserialize<'de>,
+{
+    if fname.ends_with(".xz") {
+        serde_json::from_reader(XzDecoder::new(fd))
+    } else {
+        serde_json::from_reader(fd)
+    }
 }
 
 fn print_game_stats(stats: &Table<PlayStats>) {
@@ -53,7 +77,7 @@ fn prompt(p: &Hand, d: Card) -> Result<Option<Resp>, io::Error> {
 /// given serializable data. Otherwise don't use the given data at all. Bubbles up any file system
 /// errors (other than the error of "already exists." Panics if unable to serialize/write the data
 /// to the file.
-fn create_if_not_exist<T>(fname: &str, data: T) -> Result<(), io::Error>
+fn create_if_not_exist<T>(fname: &str, data: &T) -> Result<(), Box<dyn std::error::Error>>
 where
     T: Serialize,
 {
@@ -61,7 +85,9 @@ where
         Ok(fd) => {
             // able to create the file, so we need to fill it
             println!("Creating and filling {}", fname);
-            serde_json::to_writer(fd, &data).unwrap();
+            if let Err(e) = write_maybexz(fname, fd, data) {
+                return Err(Box::new(e));
+            }
             Ok(())
         }
         Err(e) => {
@@ -69,7 +95,7 @@ where
             // ignore errors from it already existing, but bubble up all others
             match e.kind() {
                 io::ErrorKind::AlreadyExists => Ok(()),
-                _ => Err(e),
+                _ => Err(Box::new(e)),
             }
         }
     }
@@ -127,9 +153,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stats = match save_stats {
         StatsSaveStrat::Never => def_playstats_table(),
         _ => {
-            create_if_not_exist(stats_fname, def_playstats_table())?;
+            create_if_not_exist(stats_fname, &def_playstats_table())?;
             println!("Reading PlayStats from {}", stats_fname);
-            serde_json::from_reader(OpenOptions::new().read(true).open(stats_fname).unwrap())?
+            let fd = OpenOptions::new().read(true).open(stats_fname).unwrap();
+            read_maybexz(stats_fname, fd)?
         }
     };
     print_game_stats(&stats);
@@ -150,13 +177,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             stats.update(&player, dealer_up, stat)?;
             match save_stats {
                 StatsSaveStrat::Never => {}
-                StatsSaveStrat::EveryHand => serde_json::to_writer(
-                    OpenOptions::new()
+                StatsSaveStrat::EveryHand => {
+                    let fd = OpenOptions::new()
                         .write(true)
                         .truncate(true)
-                        .open(stats_fname)?,
-                    &stats,
-                )?,
+                        .open(stats_fname)?;
+                    write_maybexz(stats_fname, fd, &stats)?;
+                }
             }
         } else {
             break;
