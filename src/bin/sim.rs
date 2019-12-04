@@ -16,22 +16,22 @@ fn def_playstats_table() -> Table<PlayStats> {
     t
 }
 
-fn write_maybexz<T>(fname: &str, fd: impl Write, data: &T) -> Result<(), serde_json::error::Error>
+fn write_maybexz<T>(fd: impl Write, data: &T, xz: bool) -> Result<(), serde_json::error::Error>
 where
     T: Serialize,
 {
-    if fname.ends_with(".xz") {
+    if xz {
         serde_json::to_writer(XzEncoder::new(fd, 9), &data)
     } else {
         serde_json::to_writer(fd, &data)
     }
 }
 
-fn read_maybexz<T>(fname: &str, fd: impl Read) -> Result<T, serde_json::error::Error>
+fn read_maybexz<T>(fd: impl Read, xz: bool) -> Result<T, serde_json::error::Error>
 where
     for<'de> T: Deserialize<'de>,
 {
-    if fname.ends_with(".xz") {
+    if xz {
         serde_json::from_reader(XzDecoder::new(fd))
     } else {
         serde_json::from_reader(fd)
@@ -85,7 +85,7 @@ where
         Ok(fd) => {
             // able to create the file, so we need to fill it
             println!("Creating and filling {}", fname);
-            if let Err(e) = write_maybexz(fname, fd, data) {
+            if let Err(e) = write_maybexz(fd, data, fname.ends_with(".xz")) {
                 return Err(Box::new(e));
             }
             Ok(())
@@ -156,7 +156,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             create_if_not_exist(stats_fname, &def_playstats_table())?;
             println!("Reading PlayStats from {}", stats_fname);
             let fd = OpenOptions::new().read(true).open(stats_fname).unwrap();
-            read_maybexz(stats_fname, fd)?
+            read_maybexz(fd, stats_fname.ends_with(".xz"))?
         }
     };
     print_game_stats(&stats);
@@ -182,7 +182,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .write(true)
                         .truncate(true)
                         .open(stats_fname)?;
-                    write_maybexz(stats_fname, fd, &stats)?;
+                    write_maybexz(fd, &stats, stats_fname.ends_with(".xz"))?;
                 }
             }
         } else {
