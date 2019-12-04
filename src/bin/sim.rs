@@ -85,17 +85,17 @@ where
         Ok(fd) => {
             // able to create the file, so we need to fill it
             println!("Creating and filling {}", fname);
-            if let Err(e) = write_maybexz(fd, data, fname.ends_with(".xz")) {
-                return Err(Box::new(e));
+            match write_maybexz(fd, data, fname.ends_with(".xz")) {
+                Ok(_) => Ok(()),
+                Err(e) => Err(e.into()),
             }
-            Ok(())
         }
         Err(e) => {
             // unable to create the file, and that might be because it already exists.
             // ignore errors from it already existing, but bubble up all others
             match e.kind() {
                 io::ErrorKind::AlreadyExists => Ok(()),
-                _ => Err(Box::new(e)),
+                _ => Err(e.into()),
             }
         }
     }
