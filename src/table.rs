@@ -359,21 +359,15 @@ where
     /// An internal-only sanity check for help during final deserialization
     ///
     /// Checks if the given table has all the correct keys in its subtables
-    #[rustfmt::skip]
     fn has_all_keys(&self) -> bool {
-        if self.hard.len() != HARD_CELLS
-            || self.soft.len() != SOFT_CELLS
-            || self.pair.len() != PAIR_CELLS
-        {
-            false
-        } else if HARD_KEYS.iter().filter(|k| !self.hard.contains_key(k)).count() > 0
-            || SOFT_KEYS.iter().filter(|k| !self.soft.contains_key(k)).count() > 0
-            || PAIR_KEYS.iter().filter(|k| !self.pair.contains_key(k)).count() > 0
-        {
-            false
-        } else {
-            true
-        }
+        // easy check: do all subtables have the right number of keys
+        self.hard.len() == HARD_CELLS
+            && self.soft.len() == SOFT_CELLS
+            && self.pair.len() == PAIR_CELLS
+            // harder check: are there any keys that don't exist in the subtables
+            && HARD_KEYS.iter().filter(|k| self.hard.contains_key(k)).count() == HARD_CELLS
+            && SOFT_KEYS.iter().filter(|k| self.soft.contains_key(k)).count() == SOFT_CELLS
+            && PAIR_KEYS.iter().filter(|k| self.pair.contains_key(k)).count() == PAIR_CELLS
     }
 
     /// An internal-only constructor for help during final deserialization
