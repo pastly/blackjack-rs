@@ -190,6 +190,7 @@ impl<T> Table<T>
 where
     T: PartialEq + Copy + Clone,
 {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             hard: HashMap::new(),
