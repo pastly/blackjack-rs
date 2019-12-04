@@ -127,7 +127,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("stats")
                 .value_name("FILE")
                 .help("Read/write play stats from the file")
-                .default_value("play-stats.json"),
+                .default_value("play-stats.json.xz"),
         )
         .arg(
             Arg::with_name("statssave")
