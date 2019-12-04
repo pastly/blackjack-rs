@@ -13,7 +13,7 @@ impl PlayStats {
         }
     }
 
-    pub fn weight(&self) -> f32 {
+    pub fn weight(self) -> f32 {
         if self.seen == 0 {
             return 1f32;
         }
@@ -31,11 +31,11 @@ impl PlayStats {
         }
     }
 
-    pub fn seen(&self) -> u16 {
+    pub fn seen(self) -> u16 {
         self.seen
     }
 
-    pub fn correct(&self) -> u16 {
+    pub fn correct(self) -> u16 {
         self.correct
     }
 }
