@@ -59,7 +59,7 @@ fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
     let tkey = hands[dist.sample(&mut thread_rng())];
     let hand = rand_hand(tkey);
     let dealer_suit = rand_suit();
-    let card = match tkey.dealer() {
+    let card = match tkey.dealer {
         2 => Card::new(Rank::R2, dealer_suit),
         3 => Card::new(Rank::R3, dealer_suit),
         4 => Card::new(Rank::R4, dealer_suit),
@@ -72,7 +72,7 @@ fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
         11 => Card::new(Rank::RA, dealer_suit),
         _ => unreachable!(format!(
             "It is impossible for the dealer to have a card valued at {}",
-            tkey.dealer()
+            tkey.dealer
         )),
     };
     (hand.unwrap(), card)

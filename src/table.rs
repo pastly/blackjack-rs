@@ -72,10 +72,6 @@ impl GameDesc {
             dealer,
         }
     }
-
-    pub fn dealer(self) -> u8 {
-        self.dealer
-    }
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]
