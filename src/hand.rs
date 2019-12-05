@@ -1,4 +1,4 @@
-use crate::deck::{rand_suit, Card, Rank, Suit};
+use crate::deck::{rand_suit, Card, Rank};
 use crate::table::GameDesc;
 use rand::prelude::*;
 use std::fmt;
