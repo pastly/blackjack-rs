@@ -51,6 +51,7 @@ fn print_game_stats(stats: &Table<PlayStats>) {
     );
 }
 
+/// Generate a weighted-random next hand using player's statistics
 fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
     let (hands, weights): (Vec<GameDesc>, Vec<f32>) =
         stats.iter().map(|(tkey, s)| (tkey, s.weight())).unzip();
