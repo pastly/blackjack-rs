@@ -106,7 +106,7 @@ impl Hand {
 
 #[derive(Debug, PartialEq)]
 pub enum HandError {
-    Impossible(HandType, u8),
+    ImpossibleGameDesc(GameDesc),
 }
 
 impl std::error::Error for HandError {}
@@ -114,7 +114,11 @@ impl std::error::Error for HandError {}
 impl fmt::Display for HandError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            HandError::Impossible(t, v) => write!(f, "Cannot make {:?} hand with value {}", t, v),
+            HandError::ImpossibleGameDesc(desc) => write!(
+                f,
+                "Cannot make {:?} hand with value {} (against dealer {})",
+                desc.hand, desc.player, desc.dealer
+            ),
         }
     }
 }
@@ -253,11 +257,11 @@ pub fn rand_hand(desc: GameDesc) -> Result<Hand, HandError> {
             18 => Hand::new(&[Card::new(Rank::R9, s1), Card::new(Rank::R9, s2)]),
             20 => Hand::new(&[Card::new(t1, s1), Card::new(t2, s2)]),
             22 => Hand::new(&[Card::new(Rank::RA, s1), Card::new(Rank::RA, s2)]),
-            _ => return Err(HandError::Impossible(desc.hand, desc.player)),
+            _ => return Err(HandError::ImpossibleGameDesc(desc)),
         },
         HandType::Soft => {
             if desc.player < 12 || desc.player > 21 {
-                return Err(HandError::Impossible(desc.hand, desc.player));
+                return Err(HandError::ImpossibleGameDesc(desc));
             }
             let cards = cards_soft_sum_to(desc.player);
             assert_eq!(
@@ -270,7 +274,7 @@ pub fn rand_hand(desc: GameDesc) -> Result<Hand, HandError> {
         }
         HandType::Hard => {
             if desc.player < 5 {
-                return Err(HandError::Impossible(desc.hand, desc.player));
+                return Err(HandError::ImpossibleGameDesc(desc));
             }
             //let max = if desc.player < 20 { 2 } else { 3 };
             let max = 3;
@@ -313,10 +317,7 @@ mod tests {
                 .chain((24..=std::u8::MAX).step_by(2))
             {
                 let desc = GameDesc::new(HandType::Pair, v, DEALER_VAL);
-                assert_eq!(
-                    rand_hand(desc),
-                    Err(HandError::Impossible(HandType::Pair, v))
-                );
+                assert_eq!(rand_hand(desc), Err(HandError::ImpossibleGameDesc(desc)));
             }
         }
     }
@@ -344,10 +345,7 @@ mod tests {
             // cannot ask for a soft hand outside of valid soft hand range
             for v in (0..=11).chain(22..=std::u8::MAX) {
                 let desc = GameDesc::new(HandType::Soft, v, DEALER_VAL);
-                assert_eq!(
-                    rand_hand(desc),
-                    Err(HandError::Impossible(HandType::Soft, v))
-                );
+                assert_eq!(rand_hand(desc), Err(HandError::ImpossibleGameDesc(desc)));
             }
         }
     }
@@ -370,10 +368,7 @@ mod tests {
         for _ in 0..RAND_REPS {
             for v in 0..=1 {
                 let desc = GameDesc::new(HandType::Hard, v, DEALER_VAL);
-                assert_eq!(
-                    rand_hand(desc),
-                    Err(HandError::Impossible(HandType::Hard, v))
-                );
+                assert_eq!(rand_hand(desc), Err(HandError::ImpossibleGameDesc(desc)));
             }
         }
     }

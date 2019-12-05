@@ -57,7 +57,7 @@ const PAIR_KEYS: [(u8, u8); PAIR_CELLS] = [
 ];
 
 /// A user-visable "key" into Table. Not actually used as a key.
-#[derive(Debug, Copy, Clone)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub struct GameDesc {
     pub hand: HandType,
     pub player: u8,
