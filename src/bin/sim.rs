@@ -1,4 +1,4 @@
-use blackjack::deck::{Card, Deck, Rank, ALL_SUITS};
+use blackjack::deck::{rand_suit, Card, Deck, Rank};
 use blackjack::hand::{rand_hand, Hand};
 use blackjack::playstats::PlayStats;
 use blackjack::table::{resp_from_char, resps_from_buf, GameDesc, Resp, Table};
@@ -58,7 +58,7 @@ fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
     //println!("{:?}", weights);
     let tkey = hands[dist.sample(&mut thread_rng())];
     let hand = rand_hand(tkey);
-    let dealer_suit = *ALL_SUITS.choose(&mut thread_rng()).unwrap();
+    let dealer_suit = rand_suit();
     let card = match tkey.dealer() {
         2 => Card::new(Rank::R2, dealer_suit),
         3 => Card::new(Rank::R3, dealer_suit),

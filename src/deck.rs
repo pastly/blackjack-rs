@@ -28,6 +28,10 @@ const CLUB: &str = "♧";
 //const DIAMOND: &str = "♦";
 //const CLUB: &str = "♣";
 
+pub fn rand_suit() -> Suit {
+    *ALL_SUITS.choose(&mut thread_rng()).unwrap()
+}
+
 #[derive(Hash, PartialEq, Eq, PartialOrd, Clone, Copy, Debug)]
 pub enum Suit {
     Club,

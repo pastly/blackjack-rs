@@ -1,11 +1,7 @@
-use crate::deck::{Card, Rank, Suit, ALL_SUITS};
+use crate::deck::{rand_suit, Card, Rank, Suit};
 use crate::table::GameDesc;
 use rand::prelude::*;
 use std::fmt;
-
-fn rand_suit() -> Suit {
-    *ALL_SUITS.choose(&mut thread_rng()).unwrap()
-}
 
 // might not all be necessary
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
