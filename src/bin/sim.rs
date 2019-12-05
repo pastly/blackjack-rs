@@ -137,7 +137,7 @@ arg_enum! {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let matches = App::new(crate_name!())
+    let matches = App::new(String::from(crate_name!()) + " sim")
         .author(crate_authors!())
         .version(crate_version!())
         .arg(
