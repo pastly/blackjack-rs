@@ -57,20 +57,24 @@ const PAIR_KEYS: [(u8, u8); PAIR_CELLS] = [
 ];
 
 /// A user-visable "key" into Table. Not actually used as a key.
-#[derive(Debug)]
-pub struct TableKey {
-    hand: HandType,
-    player: u8,
-    dealer: u8,
+#[derive(Debug, Copy, Clone)]
+pub struct GameDesc {
+    pub hand: HandType,
+    pub player: u8,
+    pub dealer: u8,
 }
 
-impl TableKey {
-    fn new(hand: HandType, player: u8, dealer: u8) -> Self {
+impl GameDesc {
+    pub(crate) fn new(hand: HandType, player: u8, dealer: u8) -> Self {
         Self {
             hand,
             player,
             dealer,
         }
+    }
+
+    pub fn dealer(self) -> u8 {
+        self.dealer
     }
 }
 
@@ -433,19 +437,19 @@ where
         h.chain(s).chain(p)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (TableKey, &T)> {
+    pub fn iter(&self) -> impl Iterator<Item = (GameDesc, &T)> {
         let h = self
             .hard
             .iter()
-            .map(|(k, v)| (TableKey::new(HandType::Hard, k.0, k.1), v));
+            .map(|(k, v)| (GameDesc::new(HandType::Hard, k.0, k.1), v));
         let s = self
             .soft
             .iter()
-            .map(|(k, v)| (TableKey::new(HandType::Soft, k.0, k.1), v));
+            .map(|(k, v)| (GameDesc::new(HandType::Soft, k.0, k.1), v));
         let p = self
             .pair
             .iter()
-            .map(|(k, v)| (TableKey::new(HandType::Pair, k.0, k.1), v));
+            .map(|(k, v)| (GameDesc::new(HandType::Pair, k.0, k.1), v));
         h.chain(s).chain(p)
     }
 }

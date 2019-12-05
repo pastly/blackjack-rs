@@ -1,8 +1,14 @@
-use crate::deck::{Card, Rank};
+use crate::deck::{Card, Rank, Suit, ALL_SUITS};
+use crate::table::GameDesc;
+use rand::prelude::*;
 use std::fmt;
 
+fn rand_suit() -> Suit {
+    *ALL_SUITS.choose(&mut thread_rng()).unwrap()
+}
+
 // might not all be necessary
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum HandType {
     Hard,
     Soft,
@@ -102,11 +108,193 @@ impl Hand {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum HandError {
+    Impossible(HandType, u8),
+}
+
+impl std::error::Error for HandError {}
+
+impl fmt::Display for HandError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HandError::Impossible(t, v) => write!(f, "Cannot make {:?} hand with value {}", t, v),
+        }
+    }
+}
+
+fn cards_soft_sum_to(amt: u8) -> Vec<Card> {
+    // no such thing as a soft hand worth less than 12
+    assert!(amt >= 12);
+    // automatically add the ace worth 1 or 11
+    let mut remaining = amt - 11;
+    let mut v = vec![Card::new(Rank::RA, rand_suit())];
+    let mut rng = thread_rng();
+    while remaining > 0 {
+        // generate a random card value
+        //     1 is for ace,
+        //     2-9 are for 2-9,
+        //     10 is for ten, 11 is jack, 12 queen, 13 king
+        let max = if remaining < 10 { remaining } else { 13 };
+        let rank = match rng.gen_range(1, max + 1) {
+            1 => Rank::RA,
+            2 => Rank::R2,
+            3 => Rank::R3,
+            4 => Rank::R4,
+            5 => Rank::R5,
+            6 => Rank::R6,
+            7 => Rank::R7,
+            8 => Rank::R8,
+            9 => Rank::R9,
+            10 => Rank::RT,
+            11 => Rank::RJ,
+            12 => Rank::RQ,
+            13 => Rank::RK,
+            v => unreachable!(format!("Impossible to return card with value {}", v)),
+        };
+        v.push(Card::new(rank, rand_suit()));
+        remaining -= rank.value();
+    }
+    // Ace rank is worth 1, so make sure sum of card rank's values is the amount requested minus 10
+    assert_eq!(v.iter().fold(0, |acc, c| acc + c.rank.value()), amt - 10);
+    v.shuffle(&mut rng);
+    v
+}
+
+/// Generate a random vector of cards that constitute a hard hand of the given value while
+/// respecting the given min and max length (inclusive).
+///
+/// It was surprisingly difficult to figure out how to juggle all the things to consider when
+/// generating a random hard hand. So instead of percisely generating a hand that fits the
+/// parameters the first time, generate random hands worth the given amount over and over until we
+/// have one that is not soft, not a pair, and has between min_len and max_len cards (inclusively).
+///
+/// As this is an internal helper function, asserts are used instead of Errors at this time:
+/// - There is no such thing as a hard hand worth less than 5.
+/// - Refuse to generate a hard hand worth more than 21 even if perfectly possible. We don't need
+/// to be able to do this now, and it makes reasoning about max_len easier
+/// - Refuse a min_len less than 2, a max_len less than the min_len (it can be equal, however), and
+/// enforce a max_len of at least 3 if amount requested is 20 or 21.
+fn cards_hard_sum_to(amt: u8, min_len: u8, max_len: u8) -> Vec<Card> {
+    assert!(amt >= 5);
+    assert!(amt <= 21);
+    assert!(min_len >= 2);
+    assert!(min_len <= max_len);
+    if amt >= 20 {
+        // a hard 20 must have 3+ cards: ten + ten is a pair
+        // a hard 21 must have 3+ cards: ten + ace is a soft 21
+        assert!(max_len > 2);
+    }
+    let mut rng = thread_rng();
+    // start of the "potentially infinite loop" if you get really unlucky forever with RNG. Or if
+    // there's a programming error, but of course that's impossible.
+    let mut hand = loop {
+        // gen random set of cards worth the specified amount
+        let cards = {
+            let mut v = vec![];
+            let mut remaining = amt;
+            while remaining > 0 {
+                let max = if remaining < 10 { remaining } else { 13 };
+                let rank = match rng.gen_range(1, max + 1) {
+                    1 => Rank::RA,
+                    2 => Rank::R2,
+                    3 => Rank::R3,
+                    4 => Rank::R4,
+                    5 => Rank::R5,
+                    6 => Rank::R6,
+                    7 => Rank::R7,
+                    8 => Rank::R8,
+                    9 => Rank::R9,
+                    10 => Rank::RT,
+                    11 => Rank::RJ,
+                    12 => Rank::RQ,
+                    13 => Rank::RK,
+                    v => unreachable!(format!("Impossible to return card with value {}", v)),
+                };
+                v.push(Card::new(rank, rand_suit()));
+                remaining -= rank.value();
+            }
+            v
+        };
+        // cards can't be used if wrong number
+        if cards.len() < 2 || cards.len() < min_len as usize || cards.len() > max_len as usize {
+            continue;
+        }
+        // hand can't be used if pair or soft
+        let hand = Hand::new(&cards);
+        if hand.is_pair() || hand.is_soft() {
+            continue;
+        }
+        // final sanity check. hand isn't soft so Hand::value()'s rv of "highest possible value" is
+        // **THE** value.
+        assert_eq!(hand.value(), amt);
+        break hand;
+    };
+    // got lucky this time. Return the hand.
+    hand.cards.shuffle(&mut rng);
+    hand.cards
+}
+
+pub fn rand_hand(desc: GameDesc) -> Result<Hand, HandError> {
+    let mut rng = thread_rng();
+    let s1 = rand_suit();
+    let s2 = rand_suit();
+    let t1 = *[Rank::RT, Rank::RJ, Rank::RQ, Rank::RK]
+        .choose(&mut rng)
+        .unwrap();
+    let t2 = *[Rank::RT, Rank::RJ, Rank::RQ, Rank::RK]
+        .choose(&mut rng)
+        .unwrap();
+    let h = match desc.hand {
+        HandType::Pair => match desc.player {
+            4 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R2, s2)]),
+            6 => Hand::new(&[Card::new(Rank::R3, s1), Card::new(Rank::R3, s2)]),
+            8 => Hand::new(&[Card::new(Rank::R4, s1), Card::new(Rank::R4, s2)]),
+            10 => Hand::new(&[Card::new(Rank::R5, s1), Card::new(Rank::R5, s2)]),
+            12 => Hand::new(&[Card::new(Rank::R6, s1), Card::new(Rank::R6, s2)]),
+            14 => Hand::new(&[Card::new(Rank::R7, s1), Card::new(Rank::R7, s2)]),
+            16 => Hand::new(&[Card::new(Rank::R8, s1), Card::new(Rank::R8, s2)]),
+            18 => Hand::new(&[Card::new(Rank::R9, s1), Card::new(Rank::R9, s2)]),
+            20 => Hand::new(&[Card::new(t1, s1), Card::new(t2, s2)]),
+            22 => Hand::new(&[Card::new(Rank::RA, s1), Card::new(Rank::RA, s2)]),
+            _ => return Err(HandError::Impossible(desc.hand, desc.player)),
+        },
+        HandType::Soft => {
+            if desc.player < 12 || desc.player > 21 {
+                return Err(HandError::Impossible(desc.hand, desc.player));
+            }
+            let cards = cards_soft_sum_to(desc.player);
+            assert_eq!(
+                cards.iter().fold(0, |acc, c| acc + c.value()),
+                desc.player - 10
+            );
+            let h = Hand::new(&cards);
+            assert_eq!(h.value(), desc.player);
+            h
+        }
+        HandType::Hard => {
+            if desc.player < 5 {
+                return Err(HandError::Impossible(desc.hand, desc.player));
+            }
+            //let max = if desc.player < 20 { 2 } else { 3 };
+            let max = 3;
+            let cards = cards_hard_sum_to(desc.player, 2, max);
+            let h = Hand::new(&cards);
+            assert_eq!(h.value(), desc.player);
+            h
+        }
+    };
+    Ok(h)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::Hand;
+    use super::{rand_hand, Hand, HandError, HandType};
     use crate::deck::{Card, Rank, Suit, ALL_RANKS};
+    use crate::table::GameDesc;
     const SUIT: Suit = Suit::Club;
+    const DEALER_VAL: u8 = 2;
+    const RAND_REPS: usize = 1;
 
     fn all_pairs() -> Vec<Hand> {
         let mut hands = vec![];
@@ -118,6 +306,92 @@ mod tests {
             }
         }
         hands
+    }
+
+    #[test]
+    fn rand_pair_bad() {
+        for _ in 0..RAND_REPS {
+            // cannot ask for a random pair with value zero, odd value, or even value larger than 22
+            for v in (0..=2)
+                .chain((1..=23).step_by(2))
+                .chain((24..=std::u8::MAX).step_by(2))
+            {
+                let desc = GameDesc::new(HandType::Pair, v, DEALER_VAL);
+                assert_eq!(
+                    rand_hand(desc),
+                    Err(HandError::Impossible(HandType::Pair, v))
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn rand_pair_good() {
+        for _ in 0..RAND_REPS {
+            // test all valid pairs
+            for v in (4..=22).step_by(2) {
+                let desc = GameDesc::new(HandType::Pair, v, DEALER_VAL);
+                let h = rand_hand(desc).unwrap();
+                // pair aces stored at value 22, not 12 like Hand::value() would say
+                if v == 22 {
+                    assert_eq!(h.value(), 12);
+                } else {
+                    assert_eq!(h.value(), v);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn rand_soft_bad() {
+        for _ in 0..RAND_REPS {
+            // cannot ask for a soft hand outside of valid soft hand range
+            for v in (0..=11).chain(22..=std::u8::MAX) {
+                let desc = GameDesc::new(HandType::Soft, v, DEALER_VAL);
+                assert_eq!(
+                    rand_hand(desc),
+                    Err(HandError::Impossible(HandType::Soft, v))
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn rand_soft_good() {
+        for _ in 0..RAND_REPS {
+            // test all valid soft hands
+            for v in 12..=21 {
+                let desc = GameDesc::new(HandType::Soft, v, DEALER_VAL);
+                let h = rand_hand(desc).unwrap();
+                assert_eq!(h.value(), v);
+                assert!(h.cards.iter().filter(|c| c.rank == Rank::RA).count() >= 1);
+            }
+        }
+    }
+
+    #[test]
+    fn rand_hard_bad() {
+        for _ in 0..RAND_REPS {
+            for v in 0..=1 {
+                let desc = GameDesc::new(HandType::Hard, v, DEALER_VAL);
+                assert_eq!(
+                    rand_hand(desc),
+                    Err(HandError::Impossible(HandType::Hard, v))
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn rand_hard_good() {
+        for _ in 0..RAND_REPS {
+            for v in 5..=21 {
+                let desc = GameDesc::new(HandType::Hard, v, DEALER_VAL);
+                let h = rand_hand(desc).unwrap();
+                //eprintln!("{} {}", h, v);
+                assert_eq!(h.value(), v);
+            }
+        }
     }
 
     #[test]

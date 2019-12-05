@@ -17,7 +17,7 @@ pub(crate) const ALL_RANKS: [Rank; 13] = [
     Rank::RK,
     Rank::RA,
 ];
-pub(crate) const ALL_SUITS: [Suit; 4] = [Suit::Club, Suit::Diamond, Suit::Heart, Suit::Spade];
+pub const ALL_SUITS: [Suit; 4] = [Suit::Club, Suit::Diamond, Suit::Heart, Suit::Spade];
 const DECK_LEN: usize = ALL_RANKS.len() * ALL_SUITS.len();
 const SPADE: &str = "♤";
 const HEART: &str = "♡";

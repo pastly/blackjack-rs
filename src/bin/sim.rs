@@ -1,8 +1,10 @@
-use blackjack::deck::{Card, Deck};
-use blackjack::hand::Hand;
+use blackjack::deck::{Card, Deck, Rank, ALL_SUITS};
+use blackjack::hand::{rand_hand, Hand};
 use blackjack::playstats::PlayStats;
-use blackjack::table::{resp_from_char, resps_from_buf, Resp, Table};
+use blackjack::table::{resp_from_char, resps_from_buf, GameDesc, Resp, Table};
 use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, App, Arg};
+use rand::distributions::WeightedIndex;
+use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
 use std::io::{self, Read, Write};
@@ -47,9 +49,33 @@ fn print_game_stats(stats: &Table<PlayStats>) {
         num_correct as f32 / num_seen as f32 * 100.0,
         num_seen
     );
-    //for item in stats.iter() {
-    //    println!("{:?}", item);
-    //}
+}
+
+fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
+    let (hands, weights): (Vec<GameDesc>, Vec<f32>) =
+        stats.iter().map(|(tkey, s)| (tkey, s.weight())).unzip();
+    let dist = WeightedIndex::new(&weights).unwrap();
+    //println!("{:?}", weights);
+    let tkey = hands[dist.sample(&mut thread_rng())];
+    let hand = rand_hand(tkey);
+    let dealer_suit = *ALL_SUITS.choose(&mut thread_rng()).unwrap();
+    let card = match tkey.dealer() {
+        2 => Card::new(Rank::R2, dealer_suit),
+        3 => Card::new(Rank::R3, dealer_suit),
+        4 => Card::new(Rank::R4, dealer_suit),
+        5 => Card::new(Rank::R5, dealer_suit),
+        6 => Card::new(Rank::R6, dealer_suit),
+        7 => Card::new(Rank::R7, dealer_suit),
+        8 => Card::new(Rank::R8, dealer_suit),
+        9 => Card::new(Rank::R9, dealer_suit),
+        10 => Card::new(Rank::RT, dealer_suit),
+        11 => Card::new(Rank::RA, dealer_suit),
+        _ => unreachable!(format!(
+            "It is impossible for the dealer to have a card valued at {}",
+            tkey.dealer()
+        )),
+    };
+    (hand.unwrap(), card)
 }
 
 fn prompt(p: &Hand, d: Card) -> Result<Option<Resp>, io::Error> {
@@ -138,6 +164,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .value_name("WHEN")
                 .help("When to save play statistics to disk"),
         )
+        .arg(
+            Arg::with_name("unirand")
+            .long("rand-every")
+            .default_value("2")
+            .value_name("CNT")
+            .help("Every CNT rolls, generate hand uniformally at random as opposed to weighted by play statistics. 0 means never, 1 means always.")
+        )
         .get_matches();
     let mut deck = Deck::new_infinite();
     let mut table = Table::new();
@@ -150,6 +183,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // safe to unwrap bc --stats is required
     let stats_fname = matches.value_of("stats").unwrap();
     let save_stats = value_t!(matches, "statssave", StatsSaveStrat)?;
+    let uni_rand_every = {
+        let val = value_t!(matches, "unirand", u64)?;
+        if val == 0 {
+            std::u64::MAX
+        } else {
+            val
+        }
+    };
+    let mut hand_count = 0;
     let mut stats = match save_stats {
         StatsSaveStrat::Never => def_playstats_table(),
         _ => {
@@ -161,8 +203,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     print_game_stats(&stats);
     loop {
-        let player = Hand::new(&[deck.draw()?, deck.draw()?]);
-        let dealer_up = deck.draw()?;
+        hand_count += 1;
+        let (player, dealer_up) = if hand_count == uni_rand_every {
+            // played enough hands that we should generate the next hand uniformally at random.
+            // Reset hand count and do so.
+            hand_count = 0;
+            //println!("Uniformally random hand chosen, not based on play stats");
+            (Hand::new(&[deck.draw()?, deck.draw()?]), deck.draw()?)
+        } else {
+            // haven't played enough hands yet, so generate randomly using play stats for weight
+            rand_next_hand(&stats)
+        };
         if let Some(choice) = prompt(&player, dealer_up)? {
             let best = table.get(&player, dealer_up)?;
             print!("{} ", choice);
