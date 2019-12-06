@@ -222,11 +222,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("correct");
             } else {
                 println!("wrong. Should {}", best);
-                print_game_stats(&stats);
             }
             let mut stat = stats.get(&player, dealer_up)?;
             stat.inc(choice == best);
             stats.update(&player, dealer_up, stat)?;
+            if choice != best {
+                print_game_stats(&stats);
+            }
             match save_stats {
                 StatsSaveStrat::Never => {}
                 StatsSaveStrat::EveryHand => {
