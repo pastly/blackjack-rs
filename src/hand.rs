@@ -123,20 +123,42 @@ impl fmt::Display for HandError {
     }
 }
 
-fn cards_soft_sum_to(amt: u8) -> Vec<Card> {
-    // no such thing as a soft hand worth less than 12
+/// Generate and random vector of cards that constitute a soft hand of the given value while
+/// respecting the given min and max length (inclusive).
+///
+/// This is implemented in two ways:
+/// 1. For small soft hands (i.e. soft 16 or below) and for max_len = 2, generate the only 2-card
+///    hand that will work. Ace and a second card.
+/// 2. For all other soft hands or for max_len > 2, generate a hard hand with value amt - 11, add
+///    an ace, and return that.
+///
+/// As this is an internal helper function, asserts are used instead of Errors at this time:
+/// - No such thing as a soft hand worth less than 12 or more than 21
+/// - Refuse a min_len less than 2, a max_len less than min_len (they can be equal, however), and
+/// require min_len to be no more than the length of the all-ace hand that sums to the rquested
+/// amount. E.g.: soft 18 with all aces is 8 cards long (11 + 7*1).
+///
+/// The generation of a hard hand is delegated to cards_hard_sum_to().
+fn cards_soft_sum_to(amt: u8, min_len: u8, max_len: u8) -> Vec<Card> {
+    // no such thing as a soft hand worth less than 12 or more than 21
     assert!(amt >= 12);
+    assert!(amt <= 21);
+    assert!(min_len >= 2);
+    assert!(min_len <= max_len);
+    // soft 12 max length is 2 (ace_1 + ace_11)
+    // soft 21 max length is 11 (10*ace_1 + 1*ace_11)
+    // soft X max length is X-10
+    assert!(min_len <= amt - 10);
     // automatically add the ace worth 1 or 11
-    let mut remaining = amt - 11;
-    let mut v = vec![Card::new(Rank::RA, rand_suit())];
+    let remaining = amt - 11;
+    let mut cards = vec![Card::new(Rank::RA, rand_suit())];
     let mut rng = thread_rng();
-    while remaining > 0 {
-        // generate a random card value
-        //     1 is for ace,
-        //     2-9 are for 2-9,
-        //     10 is for ten, 11 is jack, 12 queen, 13 king
-        let max = if remaining < 10 { remaining } else { 13 };
-        let rank = match rng.gen_range(1, max + 1) {
+    // If there is very little remaining, just pick a second card and be done with it.
+    // cards_hard_sum_to() wants to be able to return a legit non-soft non-pair hand of cards with
+    // 2+ cards in it. We can't do that with a small soft hand.
+    // Also just pick the obvious second hard if max_len is 2.
+    cards = if remaining < 5 || max_len == 2 {
+        let rank = match remaining {
             1 => Rank::RA,
             2 => Rank::R2,
             3 => Rank::R3,
@@ -146,19 +168,20 @@ fn cards_soft_sum_to(amt: u8) -> Vec<Card> {
             7 => Rank::R7,
             8 => Rank::R8,
             9 => Rank::R9,
-            10 => Rank::RT,
-            11 => Rank::RJ,
-            12 => Rank::RQ,
-            13 => Rank::RK,
+            10 => *[Rank::RT, Rank::RJ, Rank::RQ, Rank::RK]
+                .choose(&mut rng)
+                .unwrap(),
             v => unreachable!(format!("Impossible to return card with value {}", v)),
         };
-        v.push(Card::new(rank, rand_suit()));
-        remaining -= rank.value();
-    }
-    // Ace rank is worth 1, so make sure sum of card rank's values is the amount requested minus 10
-    assert_eq!(v.iter().fold(0, |acc, c| acc + c.rank.value()), amt - 10);
-    v.shuffle(&mut rng);
-    v
+        cards.push(Card::new(rank, rand_suit()));
+        cards
+    } else {
+        let max = std::cmp::max(2, max_len - 1);
+        cards.extend(cards_hard_sum_to(remaining, 2, max));
+        cards
+    };
+    cards.shuffle(&mut rng);
+    cards
 }
 
 /// Generate a random vector of cards that constitute a hard hand of the given value while
@@ -263,7 +286,7 @@ pub fn rand_hand(desc: GameDesc) -> Result<Hand, HandError> {
             if desc.player < 12 || desc.player > 21 {
                 return Err(HandError::ImpossibleGameDesc(desc));
             }
-            let cards = cards_soft_sum_to(desc.player);
+            let cards = cards_soft_sum_to(desc.player, 2, 2);
             assert_eq!(
                 cards.iter().fold(0, |acc, c| acc + c.value()),
                 desc.player - 10
