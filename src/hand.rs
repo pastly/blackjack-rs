@@ -317,7 +317,7 @@ mod tests {
     use crate::table::GameDesc;
     const SUIT: Suit = Suit::Club;
     const DEALER_VAL: u8 = 2;
-    const RAND_REPS: usize = 1;
+    const RAND_REPS: usize = 1000;
 
     fn all_pairs() -> Vec<Hand> {
         let mut hands = vec![];
