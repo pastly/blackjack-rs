@@ -101,7 +101,7 @@ fn prompt(
     stat: PlayStats,
     in_buf: &mut impl BufRead,
     out_buf: &mut impl Write,
-) -> Result<Option<Resp>, io::Error> {
+) -> Result<Resp, io::Error> {
     loop {
         write!(
             out_buf,
@@ -123,7 +123,7 @@ fn prompt(
         }
         let c: char = s.chars().take(1).collect::<Vec<char>>()[0].to_ascii_uppercase();
         let resp = resp_from_char(c);
-        if resp.is_some() {
+        if let Some(resp) = resp {
             return Ok(resp);
         } else {
             println!("Bad response: {}", c);
@@ -252,42 +252,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             (h, d, RandType::Weighted)
         };
         let current_stat = stats.get(&player, dealer_up)?;
-        if let Some(choice) = prompt(
+        let choice = prompt(
             &player,
             dealer_up,
             rand_type,
             current_stat,
             &mut BufReader::new(io::stdin()),
             &mut io::stdout(),
-        )? {
-            let best = table.get(&player, dealer_up)?;
-            print!("{} ", choice);
-            if choice == best {
-                println!("correct");
-            } else {
-                println!("wrong. Should {}", best);
-            }
-            let mut stat = stats.get(&player, dealer_up)?;
-            stat.inc(choice == best);
-            stats.update(&player, dealer_up, stat)?;
-            if choice != best {
-                print_game_stats(&stats);
-            }
-            match save_stats {
-                StatsSaveStrat::Never => {}
-                StatsSaveStrat::EveryHand => {
-                    let fd = OpenOptions::new()
-                        .write(true)
-                        .truncate(true)
-                        .open(stats_fname)?;
-                    write_maybexz(fd, &stats, stats_fname.ends_with(".xz"))?;
-                }
-            }
+        )?;
+        let best = table.get(&player, dealer_up)?;
+        print!("{} ", choice);
+        if choice == best {
+            println!("correct");
         } else {
-            break;
+            println!("wrong. Should {}", best);
+        }
+        let mut stat = stats.get(&player, dealer_up)?;
+        stat.inc(choice == best);
+        stats.update(&player, dealer_up, stat)?;
+        if choice != best {
+            print_game_stats(&stats);
+        }
+        match save_stats {
+            StatsSaveStrat::Never => {}
+            StatsSaveStrat::EveryHand => {
+                let fd = OpenOptions::new()
+                    .write(true)
+                    .truncate(true)
+                    .open(stats_fname)?;
+                write_maybexz(fd, &stats, stats_fname.ends_with(".xz"))?;
+            }
         }
     }
-    Ok(())
+    //Ok(())
 }
 
 #[cfg(test)]
@@ -312,7 +309,7 @@ mod tests {
         PlayStats::new()
     }
 
-    fn prompt_with(stdin: &str) -> Option<Resp> {
+    fn prompt_with(stdin: &str) -> Resp {
         prompt(
             &get_hand(),
             get_card(),
@@ -327,28 +324,28 @@ mod tests {
     #[test]
     fn double() {
         for s in &["d", "Dd", "dlj238gf"] {
-            assert_eq!(prompt_with(s), Some(Resp::Double));
+            assert_eq!(prompt_with(s), Resp::Double);
         }
     }
 
     #[test]
     fn split() {
         for s in &["p", "Pp", "plj238gf"] {
-            assert_eq!(prompt_with(s), Some(Resp::Split));
+            assert_eq!(prompt_with(s), Resp::Split);
         }
     }
 
     #[test]
     fn hit() {
         for s in &["h", "Hh", "hlj238gf"] {
-            assert_eq!(prompt_with(s), Some(Resp::Hit));
+            assert_eq!(prompt_with(s), Resp::Hit);
         }
     }
 
     #[test]
     fn stand() {
         for s in &["s", "Ss", "slj238gf"] {
-            assert_eq!(prompt_with(s), Some(Resp::Stand));
+            assert_eq!(prompt_with(s), Resp::Stand);
         }
     }
 
@@ -356,6 +353,6 @@ mod tests {
     fn empty_eventually() {
         // eventually finds command even if lots of leading whitespace
         let s = "\n\n    \n  s   \n\n";
-        assert_eq!(prompt_with(s), Some(Resp::Stand));
+        assert_eq!(prompt_with(s), Resp::Stand);
     }
 }
