@@ -79,9 +79,36 @@ fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
     (hand.unwrap(), card)
 }
 
-fn prompt(p: &Hand, d: Card) -> Result<Option<Resp>, io::Error> {
+enum RandType {
+    Uniform,
+    Weighted,
+}
+
+impl std::fmt::Display for RandType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            RandType::Uniform => "UR",
+            RandType::Weighted => "WR",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+fn prompt(
+    p: &Hand,
+    d: Card,
+    rand_type: RandType,
+    stat: PlayStats,
+) -> Result<Option<Resp>, io::Error> {
     loop {
-        print!("{} / {} > ", p, d);
+        print!(
+            "({} {}/{}) {} / {} > ",
+            rand_type,
+            stat.correct(),
+            stat.seen(),
+            p,
+            d
+        );
         io::stdout().flush()?;
         let mut s = String::new();
         io::stdin().read_line(&mut s)?;
@@ -205,17 +232,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     print_game_stats(&stats);
     loop {
         hand_count += 1;
-        let (player, dealer_up) = if hand_count == uni_rand_every {
+        let (player, dealer_up, rand_type) = if hand_count == uni_rand_every {
             // played enough hands that we should generate the next hand uniformally at random.
             // Reset hand count and do so.
             hand_count = 0;
             //println!("Uniformally random hand chosen, not based on play stats");
-            (Hand::new(&[deck.draw()?, deck.draw()?]), deck.draw()?)
+            (
+                Hand::new(&[deck.draw()?, deck.draw()?]),
+                deck.draw()?,
+                RandType::Uniform,
+            )
         } else {
             // haven't played enough hands yet, so generate randomly using play stats for weight
-            rand_next_hand(&stats)
+            let (h, d) = rand_next_hand(&stats);
+            (h, d, RandType::Weighted)
         };
-        if let Some(choice) = prompt(&player, dealer_up)? {
+        let current_stat = stats.get(&player, dealer_up)?;
+        if let Some(choice) = prompt(&player, dealer_up, rand_type, current_stat)? {
             let best = table.get(&player, dealer_up)?;
             print!("{} ", choice);
             if choice == best {
