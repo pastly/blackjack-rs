@@ -83,6 +83,7 @@ fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
 #[derive(Debug, PartialEq)]
 enum Command {
     Quit,
+    Save,
     Resp(Resp),
 }
 
@@ -90,6 +91,7 @@ impl fmt::Display for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Command::Quit => write!(f, "Quit"),
+            Command::Save => write!(f, "Save"),
             Command::Resp(r) => write!(f, "Resp({})", r),
         }
     }
@@ -99,6 +101,7 @@ fn command_from_str(s: &str) -> Option<Command> {
     let s: &str = &s.to_ascii_uppercase();
     match s {
         "QUIT" => Some(Command::Quit),
+        "SAVE" => Some(Command::Save),
         _ => {
             if let Some(resp) = resp_from_char(s.chars().take(1).collect::<Vec<char>>()[0]) {
                 Some(Command::Resp(resp))
@@ -295,9 +298,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &mut BufReader::new(io::stdin()),
             &mut io::stdout(),
         )?;
-        // handle easy commands first
+        // handle easy commands first. New commands should either return from main() entirely or
+        // restart the loop
         match command {
             Command::Quit => return Ok(()),
+            Command::Save => {
+                // This saves play stats and restarts the loop, which means it acts like this hand
+                // never happened. This gives the player a way to skip a hand without consequences.
+                let fd = OpenOptions::new()
+                    .write(true)
+                    .truncate(true)
+                    .open(stats_fname)?;
+                write_maybexz(fd, &stats, stats_fname.ends_with(".xz"))?;
+                print_game_stats(&stats);
+                continue;
+            }
             Command::Resp(_) => { /* will handle below */ }
         };
         let resp = if let Command::Resp(r) = command {
@@ -410,5 +425,10 @@ mod tests {
         for s in &["quit", "  qUIt  ", "\nQuit"] {
             assert_eq!(prompt_with(s), Command::Quit);
         }
+    }
+
+    #[test]
+    fn save() {
+        assert_eq!(prompt_with("save"), Command::Save);
     }
 }
