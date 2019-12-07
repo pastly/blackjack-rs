@@ -7,7 +7,7 @@ use rand::distributions::WeightedIndex;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
-use std::io::{self, Read, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use xz2::read::XzDecoder;
 use xz2::write::XzEncoder;
 
@@ -99,23 +99,27 @@ fn prompt(
     d: Card,
     rand_type: RandType,
     stat: PlayStats,
+    in_buf: &mut impl BufRead,
+    out_buf: &mut impl Write,
 ) -> Result<Option<Resp>, io::Error> {
     loop {
-        print!(
+        write!(
+            out_buf,
             "({} {}/{}) {} / {} > ",
             rand_type,
             stat.correct(),
             stat.seen(),
             p,
             d
-        );
-        io::stdout().flush()?;
+        )?;
+        out_buf.flush()?;
         let mut s = String::new();
-        io::stdin().read_line(&mut s)?;
+        in_buf.read_line(&mut s)?;
         s = s.trim().to_string();
         if s.is_empty() {
-            println!();
-            return Ok(None);
+            //println!();
+            //return Ok(None);
+            continue;
         }
         let c: char = s.chars().take(1).collect::<Vec<char>>()[0].to_ascii_uppercase();
         let resp = resp_from_char(c);
@@ -248,7 +252,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             (h, d, RandType::Weighted)
         };
         let current_stat = stats.get(&player, dealer_up)?;
-        if let Some(choice) = prompt(&player, dealer_up, rand_type, current_stat)? {
+        if let Some(choice) = prompt(
+            &player,
+            dealer_up,
+            rand_type,
+            current_stat,
+            &mut BufReader::new(io::stdin()),
+            &mut io::stdout(),
+        )? {
             let best = table.get(&player, dealer_up)?;
             print!("{} ", choice);
             if choice == best {
@@ -277,4 +288,74 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{prompt, RandType};
+    use blackjack::deck::{Card, Rank, Suit};
+    use blackjack::hand::Hand;
+    use blackjack::playstats::PlayStats;
+    use blackjack::table::Resp;
+    const SUIT: Suit = Suit::Club;
+    const RANDTYPE: RandType = RandType::Uniform;
+
+    fn get_hand() -> Hand {
+        Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::R3, SUIT)])
+    }
+
+    fn get_card() -> Card {
+        Card::new(Rank::R4, SUIT)
+    }
+
+    fn get_stats() -> PlayStats {
+        PlayStats::new()
+    }
+
+    fn prompt_with(stdin: &str) -> Option<Resp> {
+        prompt(
+            &get_hand(),
+            get_card(),
+            RANDTYPE,
+            get_stats(),
+            &mut stdin.as_bytes(),
+            &mut vec![],
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn double() {
+        for s in &["d", "Dd", "dlj238gf"] {
+            assert_eq!(prompt_with(s), Some(Resp::Double));
+        }
+    }
+
+    #[test]
+    fn split() {
+        for s in &["p", "Pp", "plj238gf"] {
+            assert_eq!(prompt_with(s), Some(Resp::Split));
+        }
+    }
+
+    #[test]
+    fn hit() {
+        for s in &["h", "Hh", "hlj238gf"] {
+            assert_eq!(prompt_with(s), Some(Resp::Hit));
+        }
+    }
+
+    #[test]
+    fn stand() {
+        for s in &["s", "Ss", "slj238gf"] {
+            assert_eq!(prompt_with(s), Some(Resp::Stand));
+        }
+    }
+
+    #[test]
+    fn empty_eventually() {
+        // eventually finds command even if lots of leading whitespace
+        let s = "\n\n    \n  s   \n\n";
+        assert_eq!(prompt_with(s), Some(Resp::Stand));
+    }
 }
