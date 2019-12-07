@@ -6,6 +6,7 @@ use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, App, Arg
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::fs::OpenOptions;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use xz2::read::XzDecoder;
@@ -79,13 +80,42 @@ fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
     (hand.unwrap(), card)
 }
 
+#[derive(Debug, PartialEq)]
+enum Command {
+    Quit,
+    Resp(Resp),
+}
+
+impl fmt::Display for Command {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Command::Quit => write!(f, "Quit"),
+            Command::Resp(r) => write!(f, "Resp({})", r),
+        }
+    }
+}
+
+fn command_from_str(s: &str) -> Option<Command> {
+    let s: &str = &s.to_ascii_uppercase();
+    match s {
+        "QUIT" => Some(Command::Quit),
+        _ => {
+            if let Some(resp) = resp_from_char(s.chars().take(1).collect::<Vec<char>>()[0]) {
+                Some(Command::Resp(resp))
+            } else {
+                None
+            }
+        }
+    }
+}
+
 enum RandType {
     Uniform,
     Weighted,
 }
 
-impl std::fmt::Display for RandType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for RandType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             RandType::Uniform => "UR",
             RandType::Weighted => "WR",
@@ -101,7 +131,7 @@ fn prompt(
     stat: PlayStats,
     in_buf: &mut impl BufRead,
     out_buf: &mut impl Write,
-) -> Result<Resp, io::Error> {
+) -> Result<Command, io::Error> {
     loop {
         write!(
             out_buf,
@@ -121,13 +151,18 @@ fn prompt(
             //return Ok(None);
             continue;
         }
-        let c: char = s.chars().take(1).collect::<Vec<char>>()[0].to_ascii_uppercase();
-        let resp = resp_from_char(c);
-        if let Some(resp) = resp {
-            return Ok(resp);
+        if let Some(cmd) = command_from_str(&s) {
+            return Ok(cmd);
         } else {
-            println!("Bad response: {}", c);
+            println!("Bad response: {}", s);
         }
+        //let c: char = s.chars().take(1).collect::<Vec<char>>()[0].to_ascii_uppercase();
+        //let resp = resp_from_char(c);
+        //if let Some(resp) = resp {
+        //    return Ok(resp);
+        //} else {
+        //    println!("Bad response: {}", c);
+        //}
     }
 }
 
@@ -252,7 +287,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             (h, d, RandType::Weighted)
         };
         let current_stat = stats.get(&player, dealer_up)?;
-        let choice = prompt(
+        let command = prompt(
             &player,
             dealer_up,
             rand_type,
@@ -260,19 +295,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &mut BufReader::new(io::stdin()),
             &mut io::stdout(),
         )?;
+        // handle easy commands first
+        match command {
+            Command::Quit => return Ok(()),
+            Command::Resp(_) => { /* will handle below */ }
+        };
+        let resp = if let Command::Resp(r) = command {
+            r
+        } else {
+            unreachable!("Should have handled non-Command::Resp already");
+        };
+        // Handle the case that the user actually hit, stand, etc.
         let best = table.get(&player, dealer_up)?;
-        print!("{} ", choice);
-        if choice == best {
+        print!("{} ", resp);
+        if resp == best {
             println!("correct");
         } else {
             println!("wrong. Should {}", best);
         }
+        // increment the stats for this hand type
         let mut stat = stats.get(&player, dealer_up)?;
-        stat.inc(choice == best);
+        stat.inc(resp == best);
         stats.update(&player, dealer_up, stat)?;
-        if choice != best {
+        // print stats if user got it wrong
+        if resp != best {
             print_game_stats(&stats);
         }
+        // maybe save
         match save_stats {
             StatsSaveStrat::Never => {}
             StatsSaveStrat::EveryHand => {
@@ -289,7 +338,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(test)]
 mod tests {
-    use super::{prompt, RandType};
+    use super::{prompt, Command, RandType};
     use blackjack::deck::{Card, Rank, Suit};
     use blackjack::hand::Hand;
     use blackjack::playstats::PlayStats;
@@ -309,7 +358,7 @@ mod tests {
         PlayStats::new()
     }
 
-    fn prompt_with(stdin: &str) -> Resp {
+    fn prompt_with(stdin: &str) -> Command {
         prompt(
             &get_hand(),
             get_card(),
@@ -324,28 +373,28 @@ mod tests {
     #[test]
     fn double() {
         for s in &["d", "Dd", "dlj238gf"] {
-            assert_eq!(prompt_with(s), Resp::Double);
+            assert_eq!(prompt_with(s), Command::Resp(Resp::Double));
         }
     }
 
     #[test]
     fn split() {
         for s in &["p", "Pp", "plj238gf"] {
-            assert_eq!(prompt_with(s), Resp::Split);
+            assert_eq!(prompt_with(s), Command::Resp(Resp::Split));
         }
     }
 
     #[test]
     fn hit() {
         for s in &["h", "Hh", "hlj238gf"] {
-            assert_eq!(prompt_with(s), Resp::Hit);
+            assert_eq!(prompt_with(s), Command::Resp(Resp::Hit));
         }
     }
 
     #[test]
     fn stand() {
         for s in &["s", "Ss", "slj238gf"] {
-            assert_eq!(prompt_with(s), Resp::Stand);
+            assert_eq!(prompt_with(s), Command::Resp(Resp::Stand));
         }
     }
 
@@ -353,6 +402,13 @@ mod tests {
     fn empty_eventually() {
         // eventually finds command even if lots of leading whitespace
         let s = "\n\n    \n  s   \n\n";
-        assert_eq!(prompt_with(s), Resp::Stand);
+        assert_eq!(prompt_with(s), Command::Resp(Resp::Stand));
+    }
+
+    #[test]
+    fn quit() {
+        for s in &["quit", "  qUIt  ", "\nQuit"] {
+            assert_eq!(prompt_with(s), Command::Quit);
+        }
     }
 }
