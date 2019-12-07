@@ -84,6 +84,7 @@ fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
 enum Command {
     Quit,
     Save,
+    SaveQuit,
     Resp(Resp),
 }
 
@@ -92,6 +93,7 @@ impl fmt::Display for Command {
         match self {
             Command::Quit => write!(f, "Quit"),
             Command::Save => write!(f, "Save"),
+            Command::SaveQuit => write!(f, "SaveQuit"),
             Command::Resp(r) => write!(f, "Resp({})", r),
         }
     }
@@ -102,6 +104,7 @@ fn command_from_str(s: &str) -> Option<Command> {
     match s {
         "QUIT" => Some(Command::Quit),
         "SAVE" => Some(Command::Save),
+        "SAVEQUIT" | "SAVE QUIT" => Some(Command::SaveQuit),
         _ => {
             if let Some(resp) = resp_from_char(s.chars().take(1).collect::<Vec<char>>()[0]) {
                 Some(Command::Resp(resp))
@@ -302,7 +305,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // restart the loop
         match command {
             Command::Quit => return Ok(()),
-            Command::Save => {
+            Command::Save | Command::SaveQuit => {
                 // This saves play stats and restarts the loop, which means it acts like this hand
                 // never happened. This gives the player a way to skip a hand without consequences.
                 let fd = OpenOptions::new()
@@ -311,6 +314,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .open(stats_fname)?;
                 write_maybexz(fd, &stats, stats_fname.ends_with(".xz"))?;
                 print_game_stats(&stats);
+                if command == Command::SaveQuit {
+                    return Ok(());
+                }
                 continue;
             }
             Command::Resp(_) => { /* will handle below */ }
@@ -430,5 +436,11 @@ mod tests {
     #[test]
     fn save() {
         assert_eq!(prompt_with("save"), Command::Save);
+    }
+
+    #[test]
+    fn savequit() {
+        assert_eq!(prompt_with("savequit"), Command::SaveQuit);
+        assert_eq!(prompt_with("save quit"), Command::SaveQuit);
     }
 }
