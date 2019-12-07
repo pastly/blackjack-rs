@@ -299,9 +299,10 @@ pub fn rand_hand(desc: GameDesc) -> Result<Hand, HandError> {
             if desc.player < 5 {
                 return Err(HandError::ImpossibleGameDesc(desc));
             }
-            //let max = if desc.player < 20 { 2 } else { 3 };
-            let max = 3;
-            let cards = cards_hard_sum_to(desc.player, 2, max);
+            // 2 cards adding to 20 is a pair, not hard, so must have three
+            // 2 cards adding to 21 is a blackjack, which is soft , so must have three
+            let num = if desc.player < 20 { 2 } else { 3 };
+            let cards = cards_hard_sum_to(desc.player, num, num);
             let h = Hand::new(&cards);
             assert_eq!(h.value(), desc.player);
             h
