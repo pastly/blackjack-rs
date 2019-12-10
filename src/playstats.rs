@@ -52,6 +52,29 @@ impl PlayStats {
     }
 }
 
+impl std::ops::AddAssign for PlayStats {
+    fn add_assign(&mut self, rhs: Self) {
+        self.inc_by(rhs.correct(), true);
+        #[allow(clippy::suspicious_op_assign_impl)]
+        self.inc_by(rhs.seen() - rhs.correct(), false);
+    }
+}
+
+impl std::ops::Add for PlayStats {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        let mut new = Self::new();
+        new.inc_by(self.correct(), true);
+        new.inc_by(other.correct(), true);
+        #[allow(clippy::suspicious_arithmetic_impl)]
+        new.inc_by(self.seen() - self.correct(), false);
+        #[allow(clippy::suspicious_arithmetic_impl)]
+        new.inc_by(other.seen() - other.correct(), false);
+        new
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::PlayStats;
