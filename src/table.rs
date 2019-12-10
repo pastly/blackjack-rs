@@ -1,5 +1,5 @@
-use crate::deck::{Card, Rank};
-use crate::hand::{Hand, HandType};
+use crate::deck::{Card, Rank, Suit};
+use crate::hand::{Hand, HandError, HandType};
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 use std::collections::HashMap;
@@ -72,6 +72,100 @@ impl GameDesc {
             dealer,
         }
     }
+}
+
+/// Get a Hand that matches the given GameDesc.
+///
+/// While this function currently returns the same hand given the same input, this is not
+/// guaranteed to be the case always.
+///
+/// Returns HandError::ImpossibleGameDesc() if bad desc, else a Hand.
+pub fn player_hand_from_desc(desc: GameDesc) -> Result<Hand, HandError> {
+    let s1 = Suit::Club;
+    let s2 = Suit::Club;
+    let hand = match desc.hand {
+        HandType::Hard => match desc.player {
+            5 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R3, s2)]),
+            6 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R4, s2)]),
+            7 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R5, s2)]),
+            8 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R6, s2)]),
+            9 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R7, s2)]),
+            10 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R8, s2)]),
+            11 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R9, s2)]),
+            12 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::RT, s2)]),
+            13 => Hand::new(&[Card::new(Rank::R3, s1), Card::new(Rank::RT, s2)]),
+            14 => Hand::new(&[Card::new(Rank::R4, s1), Card::new(Rank::RT, s2)]),
+            15 => Hand::new(&[Card::new(Rank::R5, s1), Card::new(Rank::RT, s2)]),
+            16 => Hand::new(&[Card::new(Rank::R6, s1), Card::new(Rank::RT, s2)]),
+            17 => Hand::new(&[Card::new(Rank::R7, s1), Card::new(Rank::RT, s2)]),
+            18 => Hand::new(&[Card::new(Rank::R8, s1), Card::new(Rank::RT, s2)]),
+            19 => Hand::new(&[Card::new(Rank::R9, s1), Card::new(Rank::RT, s2)]),
+            20 => Hand::new(&[
+                Card::new(Rank::RT, s1),
+                Card::new(Rank::R8, s2),
+                Card::new(Rank::R2, s2),
+            ]),
+            21 => Hand::new(&[
+                Card::new(Rank::RT, s1),
+                Card::new(Rank::R9, s2),
+                Card::new(Rank::R2, s2),
+            ]),
+            _ => return Err(HandError::ImpossibleGameDesc(desc)),
+        },
+        HandType::Soft => {
+            let a = Card::new(Rank::RA, s1);
+            match desc.player {
+                13 => Hand::new(&[a, Card::new(Rank::R2, s2)]),
+                14 => Hand::new(&[a, Card::new(Rank::R3, s2)]),
+                15 => Hand::new(&[a, Card::new(Rank::R4, s2)]),
+                16 => Hand::new(&[a, Card::new(Rank::R5, s2)]),
+                17 => Hand::new(&[a, Card::new(Rank::R6, s2)]),
+                18 => Hand::new(&[a, Card::new(Rank::R7, s2)]),
+                19 => Hand::new(&[a, Card::new(Rank::R8, s2)]),
+                20 => Hand::new(&[a, Card::new(Rank::R9, s2)]),
+                21 => Hand::new(&[a, Card::new(Rank::RT, s2)]),
+                _ => return Err(HandError::ImpossibleGameDesc(desc)),
+            }
+        }
+        HandType::Pair => match desc.player {
+            4 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R2, s2)]),
+            6 => Hand::new(&[Card::new(Rank::R3, s1), Card::new(Rank::R3, s2)]),
+            8 => Hand::new(&[Card::new(Rank::R4, s1), Card::new(Rank::R4, s2)]),
+            10 => Hand::new(&[Card::new(Rank::R5, s1), Card::new(Rank::R5, s2)]),
+            12 => Hand::new(&[Card::new(Rank::R6, s1), Card::new(Rank::R6, s2)]),
+            14 => Hand::new(&[Card::new(Rank::R7, s1), Card::new(Rank::R7, s2)]),
+            16 => Hand::new(&[Card::new(Rank::R8, s1), Card::new(Rank::R8, s2)]),
+            18 => Hand::new(&[Card::new(Rank::R9, s1), Card::new(Rank::R9, s2)]),
+            20 => Hand::new(&[Card::new(Rank::RT, s1), Card::new(Rank::RT, s2)]),
+            22 => Hand::new(&[Card::new(Rank::RA, s1), Card::new(Rank::RA, s2)]),
+            _ => return Err(HandError::ImpossibleGameDesc(desc)),
+        },
+    };
+    Ok(hand)
+}
+
+/// Get the card that matches the dealer's card in the given GameDesc
+///
+/// While this function currently returns the same card given the same input, this is not
+/// guaranteed to always be the case. The suit might change in future implementations.
+///
+/// Returns HandError::ImpossibleGameDesc() if bad desc, else a Card.
+pub fn dealer_card_from_desc(desc: GameDesc) -> Result<Card, HandError> {
+    let s = Suit::Club;
+    let card = match desc.dealer {
+        2 => Card::new(Rank::R2, s),
+        3 => Card::new(Rank::R3, s),
+        4 => Card::new(Rank::R4, s),
+        5 => Card::new(Rank::R5, s),
+        6 => Card::new(Rank::R6, s),
+        7 => Card::new(Rank::R7, s),
+        8 => Card::new(Rank::R8, s),
+        9 => Card::new(Rank::R9, s),
+        10 => Card::new(Rank::RT, s),
+        11 => Card::new(Rank::RA, s),
+        _ => return Err(HandError::ImpossibleGameDesc(desc)),
+    };
+    Ok(card)
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -495,10 +589,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{resps_from_buf, Resp, Table, TableError};
+    use super::{
+        dealer_card_from_desc, player_hand_from_desc, resps_from_buf, GameDesc, Resp, Table,
+        TableError,
+    };
     use super::{HARD_CELLS, NUM_CELLS, PAIR_CELLS, SOFT_CELLS};
     use crate::deck::{Card, Rank, Suit, ALL_RANKS};
-    use crate::hand::Hand;
+    use crate::hand::{Hand, HandError, HandType};
     use serde_json;
     use std::iter::repeat;
 
@@ -845,6 +942,95 @@ PPPPPPPPPP
             }
         } else {
             panic!("Should have failed Table::from_raw_parts()");
+        }
+    }
+
+    fn assert_bad_player(t: HandType, p: u8) {
+        let desc = GameDesc {
+            hand: t,
+            player: p,
+            dealer: 2,
+        };
+        assert_eq!(
+            player_hand_from_desc(desc),
+            Err(HandError::ImpossibleGameDesc(desc))
+        );
+    }
+
+    fn assert_good_player(t: HandType, p: u8) {
+        let desc = GameDesc {
+            hand: t,
+            player: p,
+            dealer: 2,
+        };
+        let hand = player_hand_from_desc(desc).unwrap();
+        if t != HandType::Pair || p != 22 {
+            assert_eq!(hand.value(), p);
+        } else {
+            // special case for pair of aces. Value is 12, but stored at 22
+            assert_eq!(hand.value(), 12);
+        }
+    }
+
+    #[test]
+    fn player_hand_bad() {
+        // fail to get player hand from GameDesc with bad player hand descriptions
+        for val in (0..=4).chain(22..=std::u8::MAX) {
+            assert_bad_player(HandType::Hard, val);
+        }
+        for val in
+            (23..=std::u8::MAX).chain(vec![0, 1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21].drain(0..))
+        {
+            assert_bad_player(HandType::Pair, val);
+        }
+        for val in (0..=12).chain(22..=std::u8::MAX) {
+            assert_bad_player(HandType::Soft, val);
+        }
+    }
+
+    #[test]
+    fn player_hand_good() {
+        for val in 5..=21 {
+            assert_good_player(HandType::Hard, val);
+        }
+        for val in 13..=21 {
+            assert_good_player(HandType::Soft, val);
+        }
+        for val in vec![4, 6, 8, 10, 12, 14, 16, 18, 20, 22].into_iter() {
+            assert_good_player(HandType::Pair, val);
+        }
+    }
+
+    #[test]
+    fn dealer_card_bad() {
+        for val in (0..=1).chain(12..=std::u8::MAX) {
+            let desc = GameDesc {
+                hand: HandType::Hard,
+                player: 5,
+                dealer: val,
+            };
+            assert_eq!(
+                dealer_card_from_desc(desc),
+                Err(HandError::ImpossibleGameDesc(desc))
+            );
+        }
+    }
+
+    #[test]
+    fn dealer_card_good() {
+        for val in 2..=11 {
+            let desc = GameDesc {
+                hand: HandType::Hard,
+                player: 5,
+                dealer: val,
+            };
+            let card = dealer_card_from_desc(desc).unwrap();
+            if val != 11 {
+                assert_eq!(card.value(), val);
+            } else {
+                // aces worth one
+                assert_eq!(card.value(), 1);
+            }
         }
     }
 }

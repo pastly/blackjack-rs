@@ -1,7 +1,5 @@
-use blackjack::deck::{Card, Rank, Suit};
-use blackjack::hand::{Hand, HandType};
 use blackjack::playstats::PlayStats;
-use blackjack::table::{GameDesc, Table};
+use blackjack::table::{dealer_card_from_desc, player_hand_from_desc, Table};
 use blackjack::utils::{read_maybexz, write_maybexz};
 use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, values_t, App, Arg};
 use std::fs::OpenOptions;
@@ -10,86 +8,6 @@ arg_enum! {
     #[derive(PartialEq, Debug)]
     enum TableType {
         Stats,
-    }
-}
-
-fn player_hand(desc: GameDesc) -> Hand {
-    let s1 = Suit::Club;
-    let s2 = Suit::Club;
-    match desc.hand {
-        HandType::Hard => match desc.player {
-            5 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R3, s2)]),
-            6 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R4, s2)]),
-            7 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R5, s2)]),
-            8 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R6, s2)]),
-            9 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R7, s2)]),
-            10 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R8, s2)]),
-            11 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R9, s2)]),
-            12 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::RT, s2)]),
-            13 => Hand::new(&[Card::new(Rank::R3, s1), Card::new(Rank::RT, s2)]),
-            14 => Hand::new(&[Card::new(Rank::R4, s1), Card::new(Rank::RT, s2)]),
-            15 => Hand::new(&[Card::new(Rank::R5, s1), Card::new(Rank::RT, s2)]),
-            16 => Hand::new(&[Card::new(Rank::R6, s1), Card::new(Rank::RT, s2)]),
-            17 => Hand::new(&[Card::new(Rank::R7, s1), Card::new(Rank::RT, s2)]),
-            18 => Hand::new(&[Card::new(Rank::R8, s1), Card::new(Rank::RT, s2)]),
-            19 => Hand::new(&[Card::new(Rank::R9, s1), Card::new(Rank::RT, s2)]),
-            20 => Hand::new(&[
-                Card::new(Rank::RT, s1),
-                Card::new(Rank::R8, s2),
-                Card::new(Rank::R2, s2),
-            ]),
-            21 => Hand::new(&[
-                Card::new(Rank::RT, s1),
-                Card::new(Rank::R9, s2),
-                Card::new(Rank::R2, s2),
-            ]),
-            _ => unreachable!(),
-        },
-        HandType::Soft => {
-            let a = Card::new(Rank::RA, s1);
-            match desc.player {
-                13 => Hand::new(&[a, Card::new(Rank::R2, s2)]),
-                14 => Hand::new(&[a, Card::new(Rank::R3, s2)]),
-                15 => Hand::new(&[a, Card::new(Rank::R4, s2)]),
-                16 => Hand::new(&[a, Card::new(Rank::R5, s2)]),
-                17 => Hand::new(&[a, Card::new(Rank::R6, s2)]),
-                18 => Hand::new(&[a, Card::new(Rank::R7, s2)]),
-                19 => Hand::new(&[a, Card::new(Rank::R8, s2)]),
-                20 => Hand::new(&[a, Card::new(Rank::R9, s2)]),
-                21 => Hand::new(&[a, Card::new(Rank::RT, s2)]),
-                _ => unreachable!(),
-            }
-        }
-        HandType::Pair => match desc.player {
-            4 => Hand::new(&[Card::new(Rank::R2, s1), Card::new(Rank::R2, s2)]),
-            6 => Hand::new(&[Card::new(Rank::R3, s1), Card::new(Rank::R3, s2)]),
-            8 => Hand::new(&[Card::new(Rank::R4, s1), Card::new(Rank::R4, s2)]),
-            10 => Hand::new(&[Card::new(Rank::R5, s1), Card::new(Rank::R5, s2)]),
-            12 => Hand::new(&[Card::new(Rank::R6, s1), Card::new(Rank::R6, s2)]),
-            14 => Hand::new(&[Card::new(Rank::R7, s1), Card::new(Rank::R7, s2)]),
-            16 => Hand::new(&[Card::new(Rank::R8, s1), Card::new(Rank::R8, s2)]),
-            18 => Hand::new(&[Card::new(Rank::R9, s1), Card::new(Rank::R9, s2)]),
-            20 => Hand::new(&[Card::new(Rank::RT, s1), Card::new(Rank::RT, s2)]),
-            22 => Hand::new(&[Card::new(Rank::RA, s1), Card::new(Rank::RA, s2)]),
-            _ => unreachable!(),
-        },
-    }
-}
-
-fn dealer_card(desc: GameDesc) -> Card {
-    let s = Suit::Club;
-    match desc.dealer {
-        2 => Card::new(Rank::R2, s),
-        3 => Card::new(Rank::R3, s),
-        4 => Card::new(Rank::R4, s),
-        5 => Card::new(Rank::R5, s),
-        6 => Card::new(Rank::R6, s),
-        7 => Card::new(Rank::R7, s),
-        8 => Card::new(Rank::R8, s),
-        9 => Card::new(Rank::R9, s),
-        10 => Card::new(Rank::RT, s),
-        11 => Card::new(Rank::RA, s),
-        _ => unreachable!(),
     }
 }
 
@@ -133,8 +51,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let fd = OpenOptions::new().read(true).open(&in_fname)?;
                 let t: Table<PlayStats> = read_maybexz(fd, in_fname.ends_with(".xz"))?;
                 for (game_desc, val) in t.iter() {
-                    let player = player_hand(game_desc);
-                    let dealer = dealer_card(game_desc);
+                    let player = player_hand_from_desc(game_desc)?;
+                    let dealer = dealer_card_from_desc(game_desc)?;
                     let mut agg_entry = agg.get(&player, dealer)?;
                     agg_entry.inc_by(val.correct(), true);
                     agg_entry.inc_by(val.seen() - val.correct(), false);
@@ -142,7 +60,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             let out_fname = value_t!(matches, "output", String)?;
-            let out = OpenOptions::new().write(true).create(true).open(&out_fname)?;
+            let out = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(&out_fname)?;
             eprintln!("Writing {}", out_fname);
             write_maybexz(out, &agg, out_fname.ends_with(".xz"))?;
         }
