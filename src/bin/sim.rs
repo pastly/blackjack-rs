@@ -2,43 +2,20 @@ use blackjack::deck::{rand_suit, Card, Deck, Rank};
 use blackjack::hand::{rand_hand, Hand};
 use blackjack::playstats::PlayStats;
 use blackjack::table::{resp_from_char, resps_from_buf, GameDesc, Resp, Table};
+use blackjack::utils::{read_maybexz, write_maybexz};
 use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, App, Arg};
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::fmt;
 use std::fs::OpenOptions;
-use std::io::{self, BufRead, BufReader, Read, Write};
-use xz2::read::XzDecoder;
-use xz2::write::XzEncoder;
+use std::io::{self, BufRead, BufReader, Write};
 
 fn def_playstats_table() -> Table<PlayStats> {
     const NUM_CELLS: usize = 10 * (17 + 9 + 10);
     let mut t = Table::new();
     t.fill(vec![PlayStats::new(); NUM_CELLS]).unwrap();
     t
-}
-
-fn write_maybexz<T>(fd: impl Write, data: &T, xz: bool) -> Result<(), serde_json::error::Error>
-where
-    T: Serialize,
-{
-    if xz {
-        serde_json::to_writer(XzEncoder::new(fd, 9), &data)
-    } else {
-        serde_json::to_writer(fd, &data)
-    }
-}
-
-fn read_maybexz<T>(fd: impl Read, xz: bool) -> Result<T, serde_json::error::Error>
-where
-    for<'de> T: Deserialize<'de>,
-{
-    if xz {
-        serde_json::from_reader(XzDecoder::new(fd))
-    } else {
-        serde_json::from_reader(fd)
-    }
 }
 
 fn print_game_stats(stats: &Table<PlayStats>) {
