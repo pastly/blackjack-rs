@@ -3,7 +3,6 @@ use crate::table::GameDesc;
 use rand::prelude::*;
 use std::fmt;
 
-// might not all be necessary
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum HandType {
     Hard,

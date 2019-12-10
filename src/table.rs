@@ -271,8 +271,7 @@ impl fmt::Display for TableError {
 #[derive(Debug, PartialEq)]
 pub struct Table<T>
 where
-    // might not all be necessary
-    T: PartialEq + Copy + Clone,
+    T: PartialEq + Copy,
 {
     hard: HashMap<(u8, u8), T>,
     soft: HashMap<(u8, u8), T>,
@@ -282,7 +281,7 @@ where
 
 impl<T> Table<T>
 where
-    T: PartialEq + Copy + Clone,
+    T: PartialEq + Copy,
 {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
@@ -546,7 +545,7 @@ where
 
 impl<T> Serialize for Table<T>
 where
-    T: PartialEq + Copy + Clone + Serialize,
+    T: PartialEq + Copy + Serialize,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -569,7 +568,7 @@ where
 
 impl<'de, T> Deserialize<'de> for Table<T>
 where
-    T: PartialEq + Copy + Clone + Deserialize<'de>,
+    T: PartialEq + Copy + Deserialize<'de>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
