@@ -295,7 +295,7 @@ where
 
     /// Fill the Table's subtables from the given iterable.
     ///
-    /// The iterable must be exactly 370 items in length, else return an error.
+    /// The iterable must be exactly 360 items in length, else return an error.
     /// The table must not have been filled already, else return an error.
     ///
     /// See Table's documentation for more information.
