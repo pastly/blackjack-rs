@@ -543,6 +543,21 @@ where
     }
 }
 
+impl<T> std::ops::AddAssign for Table<T>
+where
+    T: PartialEq + Copy + std::ops::AddAssign,
+{
+    fn add_assign(&mut self, rhs: Self) {
+        for (game_desc, val) in rhs.iter() {
+            let player = player_hand_from_desc(game_desc).unwrap();
+            let dealer = dealer_card_from_desc(game_desc).unwrap();
+            let mut agg = self.get(&player, dealer).unwrap();
+            agg += *val;
+            self.update(&player, dealer, agg).unwrap();
+        }
+    }
+}
+
 impl<T> Serialize for Table<T>
 where
     T: PartialEq + Copy + Serialize,

@@ -1,5 +1,5 @@
 use blackjack::playstats::PlayStats;
-use blackjack::table::{dealer_card_from_desc, player_hand_from_desc, Table};
+use blackjack::table::Table;
 use blackjack::utils::{read_maybexz, write_maybexz};
 use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, values_t, App, Arg};
 use std::fs::OpenOptions;
@@ -9,25 +9,6 @@ arg_enum! {
     enum TableType {
         Stats,
     }
-}
-
-fn agg_tables<T>(
-    mut agg: Table<T>,
-    tables: impl Iterator<Item = Table<T>>,
-) -> Result<Table<T>, Box<dyn std::error::Error>>
-where
-    T: PartialEq + Copy + std::ops::AddAssign,
-{
-    for t in tables {
-        for (game_desc, val) in t.iter() {
-            let player = player_hand_from_desc(game_desc)?;
-            let dealer = dealer_card_from_desc(game_desc)?;
-            let mut agg_entry = agg.get(&player, dealer)?;
-            agg_entry += *val;
-            agg.update(&player, dealer, agg_entry)?;
-        }
-    }
-    Ok(agg)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -71,14 +52,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // - try reading it (fail early [...] if we can't)
             // - aggregate it into the accumulator table
             // and if all goes succesfully, put final accumulated table in agg
-            agg = inputs.into_iter().try_fold(agg, |acc, fname| {
+            let agg = match inputs.into_iter().try_fold(agg, |mut acc, fname| {
                 eprintln!("Reading {}", fname);
                 let fd = OpenOptions::new().read(true).open(&fname)?;
-                agg_tables(
-                    acc,
-                    vec![read_maybexz(fd, fname.ends_with(".xz"))?].into_iter(),
-                )
-            })?;
+                acc += read_maybexz(fd, fname.ends_with(".xz"))?;
+                Ok(acc)
+            }) {
+                Ok(v) => v,
+                Err(e) => return Err(e),
+            };
+            let seen = agg.values().fold(0, |acc, stat| acc + stat.seen());
+            eprintln!("Total games played: {}", seen);
             // try writing out result
             let out_fname = value_t!(matches, "output", String)?;
             let out = OpenOptions::new()
