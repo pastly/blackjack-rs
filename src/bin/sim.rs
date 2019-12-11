@@ -213,7 +213,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::with_name("unirand")
             .long("rand-every")
-            .default_value("2")
+            .default_value("10")
             .value_name("CNT")
             .help("Every CNT rolls, generate hand uniformally at random as opposed to weighted by play statistics. 0 means never, 1 means always.")
         )
