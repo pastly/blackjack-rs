@@ -1047,4 +1047,29 @@ PPPPPPPPPP
             }
         }
     }
+
+    #[test]
+    fn addaddsign_1() {
+        let mut t1 = Table::new();
+        t1.fill(repeat(1).take(360)).unwrap();
+        let mut t2 = Table::new();
+        t2.fill(repeat(2).take(360)).unwrap();
+        t1 += t2;
+        for v in t1.values() {
+            assert_eq!(*v, 3);
+        }
+    }
+
+    #[test]
+    fn addaddsign_2() {
+        let mut t1 = Table::new();
+        t1.fill(repeat(0).take(359).chain(repeat(1).take(1)))
+            .unwrap();
+        let mut t2 = Table::new();
+        t2.fill(repeat(1).take(1).chain(repeat(0).take(359)))
+            .unwrap();
+        t1 += t2;
+        let num_worth_1 = t1.values().filter(|&&v| v == 1).count();
+        assert_eq!(num_worth_1, 2);
+    }
 }
