@@ -139,13 +139,6 @@ fn prompt(
         } else {
             writeln!(out_buf, "Bad response: {}", s)?;
         }
-        //let c: char = s.chars().take(1).collect::<Vec<char>>()[0].to_ascii_uppercase();
-        //let resp = resp_from_char(c);
-        //if let Some(resp) = resp {
-        //    return Ok(resp);
-        //} else {
-        //    println!("Bad response: {}", c);
-        //}
     }
 }
 
