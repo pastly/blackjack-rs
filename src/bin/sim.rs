@@ -83,6 +83,9 @@ fn command_from_str(s: &str) -> Option<Command> {
         "SAVE" => Some(Command::Save),
         "SAVEQUIT" | "SAVE QUIT" => Some(Command::SaveQuit),
         _ => {
+            if s.len() != 1 {
+                return None;
+            }
             if let Some(resp) = resp_from_char(s.chars().take(1).collect::<Vec<char>>()[0]) {
                 Some(Command::Resp(resp))
             } else {
@@ -329,7 +332,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(test)]
 mod tests {
-    use super::{prompt, Command, RandType};
+    use super::{command_from_str, prompt, Command, RandType};
     use blackjack::deck::{Card, Rank, Suit};
     use blackjack::hand::Hand;
     use blackjack::playstats::PlayStats;
@@ -362,55 +365,64 @@ mod tests {
     }
 
     #[test]
+    fn prompt_empty_eventually() {
+        // eventually finds command even if lots of leading whitespace
+        let s = "\n\n    \n  s   \n\n";
+        assert_eq!(prompt_with(s), Command::Resp(Resp::Stand));
+        let s = "    quit        ";
+        assert_eq!(prompt_with(s), Command::Quit);
+    }
+
+    #[test]
     fn double() {
-        for s in &["d", "Dd", "dlj238gf"] {
-            assert_eq!(prompt_with(s), Command::Resp(Resp::Double));
+        for s in &["d", "D"] {
+            assert_eq!(command_from_str(s), Some(Command::Resp(Resp::Double)));
         }
     }
 
     #[test]
     fn split() {
-        for s in &["p", "Pp", "plj238gf"] {
-            assert_eq!(prompt_with(s), Command::Resp(Resp::Split));
+        for s in &["p", "P"] {
+            assert_eq!(command_from_str(s), Some(Command::Resp(Resp::Split)));
         }
     }
 
     #[test]
     fn hit() {
-        for s in &["h", "Hh", "hlj238gf"] {
-            assert_eq!(prompt_with(s), Command::Resp(Resp::Hit));
+        for s in &["h", "H"] {
+            assert_eq!(command_from_str(s), Some(Command::Resp(Resp::Hit)));
         }
     }
 
     #[test]
     fn stand() {
-        for s in &["s", "Ss", "slj238gf"] {
-            assert_eq!(prompt_with(s), Command::Resp(Resp::Stand));
+        for s in &["s", "S"] {
+            assert_eq!(command_from_str(s), Some(Command::Resp(Resp::Stand)));
         }
     }
 
     #[test]
-    fn empty_eventually() {
-        // eventually finds command even if lots of leading whitespace
-        let s = "\n\n    \n  s   \n\n";
-        assert_eq!(prompt_with(s), Command::Resp(Resp::Stand));
-    }
-
-    #[test]
     fn quit() {
-        for s in &["quit", "  qUIt  ", "\nQuit"] {
-            assert_eq!(prompt_with(s), Command::Quit);
+        for s in &["quit", "qUIt", "Quit"] {
+            assert_eq!(command_from_str(s), Some(Command::Quit));
         }
     }
 
     #[test]
     fn save() {
-        assert_eq!(prompt_with("save"), Command::Save);
+        assert_eq!(command_from_str("save"), Some(Command::Save));
     }
 
     #[test]
     fn savequit() {
-        assert_eq!(prompt_with("savequit"), Command::SaveQuit);
-        assert_eq!(prompt_with("save quit"), Command::SaveQuit);
+        assert_eq!(command_from_str("savequit"), Some(Command::SaveQuit));
+        assert_eq!(command_from_str("save quit"), Some(Command::SaveQuit));
+    }
+
+    #[test]
+    fn invalid_command_from_str() {
+        for s in &["sace", "", "\n", " \n", " s", "s ", " s "] {
+            assert!(command_from_str(s).is_none());
+        }
     }
 }
