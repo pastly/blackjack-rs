@@ -178,4 +178,62 @@ mod tests {
         }
         assert_eq!(s1, s2);
     }
+
+    #[test]
+    fn addassign_1() {
+        let mut s1 = PlayStats::new();
+        let mut s2 = PlayStats::new();
+        s2.inc(true);
+        s1 += s2;
+        assert_eq!(s1.seen(), 1);
+        assert_eq!(s1.correct(), 1);
+        assert_eq!(s1, s2);
+        let mut s3 = PlayStats::new();
+        s3.inc(false);
+        s1 += s3;
+        assert_eq!(s1.seen(), 2);
+        assert_eq!(s1.correct(), 1);
+    }
+
+    #[test]
+    fn addassign_2() {
+        let mut s1 = PlayStats::new();
+        let mut s2 = PlayStats::new();
+        s2.inc(true);
+        for _ in 0..COUNT_MANY {
+            s1 += s2;
+        }
+        assert_eq!(s1.seen(), COUNT_MANY as u16);
+        assert_eq!(s1.correct(), COUNT_MANY as u16);
+    }
+
+    #[test]
+    fn addassign_3() {
+        let mut s1 = PlayStats::new();
+        s1 += PlayStats::new();
+        assert_eq!(s1.seen(), 0);
+        assert_eq!(s1.correct(), 0);
+        s1.inc(true);
+        s1 += PlayStats::new();
+        assert_eq!(s1.seen(), 1);
+        assert_eq!(s1.correct(), 1);
+    }
+
+    #[test]
+    fn add_1() {
+        let s = PlayStats::new() + PlayStats::new();
+        assert_eq!(s.seen(), 0);
+        assert_eq!(s.correct(), 0);
+    }
+
+    #[test]
+    fn add_2() {
+        let mut s1 = PlayStats::new();
+        let mut s2 = PlayStats::new();
+        s1.inc_by(COUNT_MANY as u16, true);
+        s2.inc_by(COUNT_MANY as u16, false);
+        let s3 = s1 + s2;
+        assert_eq!(s3.seen(), 2 * COUNT_MANY as u16);
+        assert_eq!(s3.correct(), COUNT_MANY as u16);
+    }
 }
