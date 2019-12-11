@@ -137,7 +137,7 @@ fn prompt(
         if let Some(cmd) = command_from_str(&s) {
             return Ok(cmd);
         } else {
-            println!("Bad response: {}", s);
+            writeln!(out_buf, "Bad response: {}", s)?;
         }
         //let c: char = s.chars().take(1).collect::<Vec<char>>()[0].to_ascii_uppercase();
         //let resp = resp_from_char(c);
