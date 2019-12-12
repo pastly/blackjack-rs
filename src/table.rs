@@ -195,11 +195,11 @@ pub fn resps_from_buf<R>(buf: R) -> Vec<Resp>
 where
     R: Read,
 {
-    use crate::buffer::{CharWhitelistIter, CommentStripIter};
-    let mut buf = CharWhitelistIter::new(CommentStripIter::new(buf), "HSDP");
+    use readfilter::{CharWhitelist, CommentStrip};
+    let mut buf = CharWhitelist::new(CommentStrip::new(buf), "HSDP");
     let mut s = String::with_capacity(NUM_CELLS);
     buf.read_to_string(&mut s).unwrap();
-    // safe to unwrap as CharWhitelistIter will remove non-Resp chars
+    // safe to unwrap as CharWhitelist will remove non-Resp chars
     s.chars().map(|c| resp_from_char(c).unwrap()).collect()
 }
 
