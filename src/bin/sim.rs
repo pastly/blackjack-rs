@@ -238,6 +238,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
     let mut hand_count = 0;
+    let mut streak_count = 0;
     let mut stats = match save_stats {
         StatsSaveStrat::Never => def_playstats_table(),
         _ => {
@@ -303,9 +304,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let best = table.get(&player, dealer_up)?;
         print!("{} ", resp);
         if resp == best {
+            streak_count += 1;
             println!("correct");
         } else {
-            println!("wrong. Should {}", best);
+            println!("wrong. Should {}. Streak was {}", best, streak_count);
+            streak_count = 0;
         }
         // increment the stats for this hand type
         let mut stat = stats.get(&player, dealer_up)?;
