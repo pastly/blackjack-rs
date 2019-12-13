@@ -1,6 +1,7 @@
 [workspace]
 members =[
     "bj-core",
+    "bj-bin",
 ]
 
 [profile.release]

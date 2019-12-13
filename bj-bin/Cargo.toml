@@ -1,5 +1,5 @@
 [package]
-name = "bj-core"
+name = "bj-bin"
 version = "0.1.0"
 authors = ["Matt Traudt <sirmatt@ksu.edu>"]
 edition = "2018"
@@ -7,7 +7,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bj-core = { path = "../bj-core" }
 rand = "0.7"
+clap = "~2.33"
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
-readfilter = "0.1"
+xz2 = "0.1"

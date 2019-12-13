@@ -2,7 +2,7 @@ use bj_core::deck::{rand_suit, Card, Deck, Rank};
 use bj_core::hand::{rand_hand, Hand};
 use bj_core::playstats::PlayStats;
 use bj_core::table::{resp_from_char, resps_from_buf, GameDesc, Resp, Table};
-use bj_core::utils::{read_maybexz, write_maybexz};
+use bj_bin::utils::{read_maybexz, write_maybexz};
 use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, App, Arg};
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
