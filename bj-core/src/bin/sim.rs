@@ -1,8 +1,8 @@
-use blackjack::deck::{rand_suit, Card, Deck, Rank};
-use blackjack::hand::{rand_hand, Hand};
-use blackjack::playstats::PlayStats;
-use blackjack::table::{resp_from_char, resps_from_buf, GameDesc, Resp, Table};
-use blackjack::utils::{read_maybexz, write_maybexz};
+use bj_core::deck::{rand_suit, Card, Deck, Rank};
+use bj_core::hand::{rand_hand, Hand};
+use bj_core::playstats::PlayStats;
+use bj_core::table::{resp_from_char, resps_from_buf, GameDesc, Resp, Table};
+use bj_core::utils::{read_maybexz, write_maybexz};
 use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, App, Arg};
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
@@ -336,10 +336,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::{command_from_str, prompt, Command, RandType};
-    use blackjack::deck::{Card, Rank, Suit};
-    use blackjack::hand::Hand;
-    use blackjack::playstats::PlayStats;
-    use blackjack::table::Resp;
+    use bj_core::deck::{Card, Rank, Suit};
+    use bj_core::hand::Hand;
+    use bj_core::playstats::PlayStats;
+    use bj_core::table::Resp;
     const SUIT: Suit = Suit::Club;
     const RANDTYPE: RandType = RandType::Uniform;
 

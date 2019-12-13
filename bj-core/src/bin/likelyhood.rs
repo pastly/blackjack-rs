@@ -1,6 +1,6 @@
-use blackjack::deck::Deck;
-use blackjack::hand::Hand;
-use blackjack::table::{GameDesc, Table};
+use bj_core::deck::Deck;
+use bj_core::hand::Hand;
+use bj_core::table::{GameDesc, Table};
 use clap::{crate_authors, crate_name, crate_version, value_t, App, Arg};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
