@@ -1,8 +1,8 @@
+use bj_bin::utils::{read_maybexz, write_maybexz};
 use bj_core::deck::{rand_suit, Card, Deck, Rank};
 use bj_core::hand::{rand_hand, Hand};
 use bj_core::playstats::PlayStats;
 use bj_core::table::{resp_from_char, resps_from_buf, GameDesc, Resp, Table};
-use bj_bin::utils::{read_maybexz, write_maybexz};
 use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, App, Arg};
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
@@ -331,101 +331,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     //Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{command_from_str, prompt, Command, RandType};
-    use bj_core::deck::{Card, Rank, Suit};
-    use bj_core::hand::Hand;
-    use bj_core::playstats::PlayStats;
-    use bj_core::table::Resp;
-    const SUIT: Suit = Suit::Club;
-    const RANDTYPE: RandType = RandType::Uniform;
-
-    fn get_hand() -> Hand {
-        Hand::new(&[Card::new(Rank::R2, SUIT), Card::new(Rank::R3, SUIT)])
-    }
-
-    fn get_card() -> Card {
-        Card::new(Rank::R4, SUIT)
-    }
-
-    fn get_stats() -> PlayStats {
-        PlayStats::new()
-    }
-
-    fn prompt_with(stdin: &str) -> Command {
-        prompt(
-            &get_hand(),
-            get_card(),
-            RANDTYPE,
-            get_stats(),
-            &mut stdin.as_bytes(),
-            &mut vec![],
-        )
-        .unwrap()
-    }
-
-    #[test]
-    fn prompt_empty_eventually() {
-        // eventually finds command even if lots of leading whitespace
-        let s = "\n\n    \n  s   \n\n";
-        assert_eq!(prompt_with(s), Command::Resp(Resp::Stand));
-        let s = "    quit        ";
-        assert_eq!(prompt_with(s), Command::Quit);
-    }
-
-    #[test]
-    fn double() {
-        for s in &["d", "D"] {
-            assert_eq!(command_from_str(s), Some(Command::Resp(Resp::Double)));
-        }
-    }
-
-    #[test]
-    fn split() {
-        for s in &["p", "P"] {
-            assert_eq!(command_from_str(s), Some(Command::Resp(Resp::Split)));
-        }
-    }
-
-    #[test]
-    fn hit() {
-        for s in &["h", "H"] {
-            assert_eq!(command_from_str(s), Some(Command::Resp(Resp::Hit)));
-        }
-    }
-
-    #[test]
-    fn stand() {
-        for s in &["s", "S"] {
-            assert_eq!(command_from_str(s), Some(Command::Resp(Resp::Stand)));
-        }
-    }
-
-    #[test]
-    fn quit() {
-        for s in &["quit", "qUIt", "Quit"] {
-            assert_eq!(command_from_str(s), Some(Command::Quit));
-        }
-    }
-
-    #[test]
-    fn save() {
-        assert_eq!(command_from_str("save"), Some(Command::Save));
-    }
-
-    #[test]
-    fn savequit() {
-        assert_eq!(command_from_str("savequit"), Some(Command::SaveQuit));
-        assert_eq!(command_from_str("save quit"), Some(Command::SaveQuit));
-    }
-
-    #[test]
-    fn invalid_command_from_str() {
-        for s in &["sace", "", "\n", " \n", " s", "s ", " s "] {
-            assert!(command_from_str(s).is_none());
-        }
-    }
 }
