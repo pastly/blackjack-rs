@@ -1,4 +1,5 @@
 /target
+**/target/rls
 **/*.rs.bk
 *.swp
 play-stats.json.xz
