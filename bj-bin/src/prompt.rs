@@ -10,6 +10,18 @@ pub enum Command {
     Resp(Resp),
 }
 
+impl std::fmt::Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Command::Quit => write!(f, "Quit"),
+            Command::Save => write!(f, "Save"),
+            Command::SaveQuit => write!(f, "SaveQuit"),
+            Command::Bet(amt) => write!(f, "Bet({})", amt),
+            Command::Resp(r) => write!(f, "Resp({})", r),
+        }
+    }
+}
+
 fn command_from_str(s: &str) -> Option<Command> {
     let s: &str = &s.to_ascii_uppercase();
     let words: Vec<_> = s.split_whitespace().collect();

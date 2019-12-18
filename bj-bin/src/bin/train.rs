@@ -1,8 +1,9 @@
+use bj_bin::prompt;
 use bj_bin::utils::{read_maybexz, write_maybexz};
 use bj_core::deck::{rand_suit, Card, Deck, Rank};
 use bj_core::hand::{rand_hand, Hand};
 use bj_core::playstats::PlayStats;
-use bj_core::table::{resp_from_char, resps_from_buf, GameDesc, Resp, Table};
+use bj_core::table::{resps_from_buf, GameDesc, Table};
 use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, App, Arg};
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
@@ -57,44 +58,6 @@ fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
     (hand.unwrap(), card)
 }
 
-#[derive(Debug, PartialEq)]
-enum Command {
-    Quit,
-    Save,
-    SaveQuit,
-    Resp(Resp),
-}
-
-impl fmt::Display for Command {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Command::Quit => write!(f, "Quit"),
-            Command::Save => write!(f, "Save"),
-            Command::SaveQuit => write!(f, "SaveQuit"),
-            Command::Resp(r) => write!(f, "Resp({})", r),
-        }
-    }
-}
-
-fn command_from_str(s: &str) -> Option<Command> {
-    let s: &str = &s.to_ascii_uppercase();
-    match s {
-        "QUIT" => Some(Command::Quit),
-        "SAVE" => Some(Command::Save),
-        "SAVEQUIT" | "SAVE QUIT" => Some(Command::SaveQuit),
-        _ => {
-            if s.len() != 1 {
-                return None;
-            }
-            if let Some(resp) = resp_from_char(s.chars().take(1).collect::<Vec<char>>()[0]) {
-                Some(Command::Resp(resp))
-            } else {
-                None
-            }
-        }
-    }
-}
-
 enum RandType {
     Uniform,
     Weighted,
@@ -117,30 +80,22 @@ fn prompt(
     stat: PlayStats,
     in_buf: &mut impl BufRead,
     out_buf: &mut impl Write,
-) -> Result<Command, io::Error> {
+) -> io::Result<prompt::Command> {
+    let s = &format!(
+        "({} {}/{}) {} / {}",
+        rand_type,
+        stat.correct(),
+        stat.seen(),
+        p,
+        d
+    );
     loop {
-        write!(
-            out_buf,
-            "({} {}/{}) {} / {} > ",
-            rand_type,
-            stat.correct(),
-            stat.seen(),
-            p,
-            d
-        )?;
-        out_buf.flush()?;
-        let mut s = String::new();
-        in_buf.read_line(&mut s)?;
-        s = s.trim().to_string();
-        if s.is_empty() {
-            //println!();
-            //return Ok(None);
-            continue;
-        }
-        if let Some(cmd) = command_from_str(&s) {
-            return Ok(cmd);
-        } else {
-            writeln!(out_buf, "Bad response: {}", s)?;
+        match prompt::prompt(s, in_buf, out_buf)? {
+            prompt::Command::Bet(_) => {
+                writeln!(out_buf, "Cannot bet")?;
+                continue;
+            }
+            cmd => break Ok(cmd),
         }
     }
 }
@@ -278,8 +233,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // handle easy commands first. New commands should either return from main() entirely or
         // restart the loop
         match command {
-            Command::Quit => return Ok(()),
-            Command::Save | Command::SaveQuit => {
+            prompt::Command::Quit => return Ok(()),
+            prompt::Command::Save | prompt::Command::SaveQuit => {
                 // This saves play stats and restarts the loop, which means it acts like this hand
                 // never happened. This gives the player a way to skip a hand without consequences.
                 let fd = OpenOptions::new()
@@ -288,14 +243,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .open(stats_fname)?;
                 write_maybexz(fd, &stats, stats_fname.ends_with(".xz"))?;
                 print_game_stats(&stats);
-                if command == Command::SaveQuit {
+                if command == prompt::Command::SaveQuit {
                     return Ok(());
                 }
                 continue;
             }
-            Command::Resp(_) => { /* will handle below */ }
+            prompt::Command::Bet(_) => unreachable!(),
+            prompt::Command::Resp(_) => { /* will handle below */ }
         };
-        let resp = if let Command::Resp(r) = command {
+        let resp = if let prompt::Command::Resp(r) = command {
             r
         } else {
             unreachable!("Should have handled non-Command::Resp already");
