@@ -149,7 +149,16 @@ mod tests {
 
     #[test]
     fn invalid_command_from_str() {
-        for s in &["sace", "", "\n", " \n", "save bet", "bet", "bet foo", "bet 10 10"] {
+        for s in &[
+            "sace",
+            "",
+            "\n",
+            " \n",
+            "save bet",
+            "bet",
+            "bet foo",
+            "bet 10 10",
+        ] {
             assert!(command_from_str(s).is_none());
         }
     }
