@@ -101,10 +101,32 @@ impl Hand {
         // and we want to consider them all equal
         self.cards[0].value() == self.cards[1].value()
     }
+
+    /// Whether or not the hand can be doubled (i.e. whether it has two cards or not)
+    pub fn can_double(&self) -> bool {
+        self.cards.len() == 2
+    }
+
+    /// Add a card to the hand. Upon completion of this method, all properties will update the new
+    /// state of the hand: it may now be bust, no longer soft, have a different value, etc.
+    pub fn push(&mut self, c: Card) {
+        self.cards.push(c);
+    }
+
+    /// Split the hand into its two individual cards. If hand cannot be split (because the cards
+    /// don't have the same value or because there is more than 2 cards) then returns an error.
+    /// This method consumes the hand.
+    pub fn split(self) -> Result<(Card, Card), HandError> {
+        if self.cards.len() != 2 || self.cards[0].value() != self.cards[1].value() {
+            return Err(HandError::CannotSplit(self));
+        }
+        Ok((self.cards[0], self.cards[1]))
+    }
 }
 
 #[derive(Debug, PartialEq)]
 pub enum HandError {
+    CannotSplit(Hand),
     ImpossibleGameDesc(GameDesc),
 }
 
@@ -118,6 +140,7 @@ impl fmt::Display for HandError {
                 "Cannot make {:?} hand with value {} (against dealer {})",
                 desc.hand, desc.player, desc.dealer
             ),
+            HandError::CannotSplit(hand) => write!(f, "Impossible to split hand {}", hand),
         }
     }
 }
@@ -319,7 +342,7 @@ mod tests {
     const DEALER_VAL: u8 = 2;
     const RAND_REPS: usize = 1000;
 
-    fn all_pairs() -> Vec<Hand> {
+    fn all_2card_hands() -> Vec<Hand> {
         let mut hands = vec![];
         for r1 in ALL_RANKS.iter() {
             let c1 = Card::new(*r1, SUIT);
@@ -410,7 +433,7 @@ mod tests {
 
     #[test]
     fn value_le_21() {
-        for hand in all_pairs() {
+        for hand in all_2card_hands() {
             // if the first card is an ace, let it be worth 11
             let mut v = if hand.cards[0].rank == Rank::RA {
                 11
@@ -437,7 +460,7 @@ mod tests {
     #[test]
     fn is_soft_1() {
         // only tests the pairs for softness
-        for hand in all_pairs() {
+        for hand in all_2card_hands() {
             assert_eq!(
                 hand.is_soft(),
                 hand.cards.contains(&Card::new(Rank::RA, SUIT))
@@ -448,7 +471,7 @@ mod tests {
     #[test]
     fn is_soft_2() {
         // 2 low cards plus an ace is still soft
-        for mut hand in all_pairs() {
+        for mut hand in all_2card_hands() {
             // skip if already have ace
             assert_eq!(hand.cards.len(), 2);
             if hand.cards[0].rank == Rank::RA || hand.cards[1].rank == Rank::RA {
@@ -493,7 +516,7 @@ mod tests {
     #[test]
     fn aces_2() {
         // a single ace in hand of 3 hards is either 11 or 1, depending on value of other 2 cards
-        for mut hand in all_pairs() {
+        for mut hand in all_2card_hands() {
             let orig_val = hand.value();
             // for this test, skip hands that start out with more than 0 aces
             if hand.cards[0].rank == Rank::RA || hand.cards[1].rank == Rank::RA {
@@ -534,7 +557,7 @@ mod tests {
     #[test]
     fn is_bust_1() {
         // all pairs are not bust
-        for hand in all_pairs() {
+        for hand in all_2card_hands() {
             assert!(!hand.is_bust());
         }
     }
@@ -542,7 +565,7 @@ mod tests {
     #[test]
     fn is_bust_2() {
         // some 3-card hands are bust. Trusts Hand::value() to be perfect
-        for base in all_pairs() {
+        for base in all_2card_hands() {
             for r1 in ALL_RANKS.iter() {
                 let mut hand = base.clone();
                 hand.cards.push(Card::new(*r1, SUIT));
@@ -554,7 +577,7 @@ mod tests {
     #[test]
     fn is_bust_3() {
         // some 4-card hands are bust. Trusts Hand::value() to be perfect
-        for base in all_pairs() {
+        for base in all_2card_hands() {
             for r1 in ALL_RANKS.iter() {
                 for r2 in ALL_RANKS.iter() {
                     let mut hand = base.clone();
@@ -569,7 +592,7 @@ mod tests {
     #[test]
     fn is_pair_1() {
         // hand is a pair if both cards have equal value
-        for hand in all_pairs() {
+        for hand in all_2card_hands() {
             assert_eq!(hand.cards.len(), 2);
             assert_eq!(
                 hand.is_pair(),
@@ -581,7 +604,7 @@ mod tests {
     #[test]
     fn is_pair_2() {
         // 3 cards are never a pair
-        for base in all_pairs() {
+        for base in all_2card_hands() {
             for r1 in ALL_RANKS.iter() {
                 let mut hand3 = base.clone();
                 hand3.cards.push(Card::new(*r1, SUIT));
@@ -593,6 +616,73 @@ mod tests {
                     hand4.cards.push(Card::new(*r2, SUIT));
                     assert_eq!(hand4.cards.len(), 4);
                     assert!(!hand4.is_pair());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn push() {
+        // adding a 3rd and 4th card
+        // - adds the correct cards to the hand
+        // - adds them in the correct order
+        // and does so for all possible 2-card starting hands. Yes this last bit is unnecessary.
+        let c1 = Card::new(Rank::R2, Suit::Club);
+        let c2 = Card::new(Rank::R2, Suit::Diamond);
+        for mut hand in all_2card_hands() {
+            hand.push(c1);
+            assert_eq!(hand.cards.len(), 3);
+            assert_eq!(hand.cards[2], c1);
+            hand.push(c2);
+            assert_eq!(hand.cards.len(), 4);
+            assert_eq!(hand.cards[3], c2);
+        }
+    }
+
+    #[test]
+    fn split_1() {
+        // splitting a hand with over 2 cards is not possible
+        for base in all_2card_hands() {
+            for r1 in ALL_RANKS.iter() {
+                let mut hand3 = base.clone();
+                hand3.cards.push(Card::new(*r1, SUIT));
+                assert_eq!(
+                    hand3.clone().split(),
+                    Err(HandError::CannotSplit(hand3.clone()))
+                );
+                for r2 in ALL_RANKS.iter() {
+                    let mut hand4 = hand3.clone();
+                    hand4.cards.push(Card::new(*r2, SUIT));
+                    assert_eq!(hand4.clone().split(), Err(HandError::CannotSplit(hand4)));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn split_2() {
+        // can only split if the 2 cards have the same value
+        for hand in all_2card_hands() {
+            assert_eq!(
+                hand.clone().split().is_ok(),
+                hand.cards[0].value() == hand.cards[1].value(),
+            );
+        }
+    }
+
+    #[test]
+    fn can_double() {
+        // doubling is possible with and 2 cards, but not 3 or 4
+        for base in all_2card_hands() {
+            assert!(base.can_double());
+            for r1 in ALL_RANKS.iter() {
+                let mut hand3 = base.clone();
+                hand3.cards.push(Card::new(*r1, SUIT));
+                assert!(!hand3.can_double());
+                for r2 in ALL_RANKS.iter() {
+                    let mut hand4 = hand3.clone();
+                    hand4.cards.push(Card::new(*r2, SUIT));
+                    assert!(!hand4.can_double());
                 }
             }
         }
