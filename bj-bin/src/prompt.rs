@@ -44,7 +44,7 @@ fn command_from_str(s: &str) -> Option<Command> {
             None
         }
     } else if words.len() == 2 {
-        if words[0] == "BET" {
+        if words[0] == "BET" || words[0] == "B" {
             if let Ok(amt) = words[1].parse::<u32>() {
                 Some(Command::Bet(amt))
             } else {
@@ -145,6 +145,7 @@ mod tests {
     #[test]
     fn bet() {
         assert_eq!(command_from_str("bet 1"), Some(Command::Bet(1)));
+        assert_eq!(command_from_str("b 1"), Some(Command::Bet(1)));
     }
 
     #[test]
