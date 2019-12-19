@@ -107,6 +107,12 @@ impl Hand {
         self.cards.len() == 2
     }
 
+    /// Whether or not the hand can be split (i.e. whether or not it has two cards with the same
+    /// value)
+    fn can_split(&self) -> bool {
+        self.cards.len() == 2 && self.cards[0].value() == self.cards[1].value()
+    }
+
     /// Add a card to the hand. Upon completion of this method, all properties will update the new
     /// state of the hand: it may now be bust, no longer soft, have a different value, etc.
     pub fn push(&mut self, c: Card) {
@@ -117,7 +123,7 @@ impl Hand {
     /// don't have the same value or because there is more than 2 cards) then returns an error.
     /// This method consumes the hand.
     pub fn split(self) -> Result<(Card, Card), HandError> {
-        if self.cards.len() != 2 || self.cards[0].value() != self.cards[1].value() {
+        if !self.can_split() {
             return Err(HandError::CannotSplit(self));
         }
         Ok((self.cards[0], self.cards[1]))
@@ -646,6 +652,7 @@ mod tests {
             for r1 in ALL_RANKS.iter() {
                 let mut hand3 = base.clone();
                 hand3.cards.push(Card::new(*r1, SUIT));
+                assert!(!hand3.can_split());
                 assert_eq!(
                     hand3.clone().split(),
                     Err(HandError::CannotSplit(hand3.clone()))
@@ -653,6 +660,7 @@ mod tests {
                 for r2 in ALL_RANKS.iter() {
                     let mut hand4 = hand3.clone();
                     hand4.cards.push(Card::new(*r2, SUIT));
+                    assert!(!hand4.can_split());
                     assert_eq!(hand4.clone().split(), Err(HandError::CannotSplit(hand4)));
                 }
             }
@@ -665,6 +673,10 @@ mod tests {
         for hand in all_2card_hands() {
             assert_eq!(
                 hand.clone().split().is_ok(),
+                hand.cards[0].value() == hand.cards[1].value(),
+            );
+            assert_eq!(
+                hand.can_split(),
                 hand.cards[0].value() == hand.cards[1].value(),
             );
         }
