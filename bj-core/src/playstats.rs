@@ -10,8 +10,7 @@
 //! greater than correct.
 //!
 //! The weight is a value in (0, 1] and is only 1 exactly if seen is 0. Weight calculation is
-//!
-//!     1 - correct / (seen + 1)
+//! `1 - correct / (seen + 1)`
 //!
 //! - Weight of untouched PlayStats is 1 = (1 - 0/1)
 //! - Weight of PlayStats with 1 wrong is 1.0 = (1 - 0/2)
