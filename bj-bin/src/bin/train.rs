@@ -14,9 +14,7 @@ use std::io::{self, BufRead, BufReader, Write};
 
 fn def_playstats_table() -> Table<PlayStats> {
     const NUM_CELLS: usize = 10 * (17 + 9 + 10);
-    let mut t = Table::new();
-    t.fill(vec![PlayStats::new(); NUM_CELLS]).unwrap();
-    t
+    Table::new(vec![PlayStats::new(); NUM_CELLS]).unwrap()
 }
 
 fn print_game_stats(stats: &Table<PlayStats>) {
@@ -174,8 +172,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .get_matches();
     let mut deck = Deck::new_infinite();
-    let mut table = Table::new();
-    table.fill(resps_from_buf(
+    let table = Table::new(resps_from_buf(
         OpenOptions::new()
             .read(true)
             // safe to unwrap because --table is required

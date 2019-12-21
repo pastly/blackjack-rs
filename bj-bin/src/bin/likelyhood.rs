@@ -18,8 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .get_matches();
     let num_hands = value_t!(matches, "num", usize)?;
     let mut deck = Deck::new_infinite();
-    let mut table: Table<usize> = Table::new();
-    table.fill(std::iter::repeat(0).take(360))?;
+    let mut table: Table<usize> = Table::new(std::iter::repeat(0).take(360))?;
     for _ in 0..num_hands {
         let hand = Hand::new(&[deck.draw()?, deck.draw()?]);
         let dealer = deck.draw()?;

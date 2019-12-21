@@ -45,8 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match value_t!(matches, "type", TableType)? {
         TableType::Stats => {
             // create empty starting table
-            let mut agg = Table::new();
-            agg.fill(std::iter::repeat(PlayStats::new()).take(360))?;
+            let agg = Table::new(std::iter::repeat(PlayStats::new()).take(360))?;
             // for each input
             // - try to open it (fail early and break out of the iter if we can't)
             // - try reading it (fail early [...] if we can't)

@@ -216,8 +216,6 @@ pub fn resp_from_char(c: char) -> Option<Resp> {
 
 #[derive(PartialEq, Debug)]
 pub enum TableError {
-    NotFilled,
-    AlreadyFilled,
     IncorrectFillLength(usize, usize),
     HandIsBust(Hand, Card),
     MissingKeys(String),
@@ -228,8 +226,6 @@ impl std::error::Error for TableError {}
 impl fmt::Display for TableError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TableError::NotFilled => write!(f, "Table not filled in yet"),
-            TableError::AlreadyFilled => write!(f, "Table has already been filled"),
             TableError::IncorrectFillLength(expect, given) => write!(
                 f,
                 "Table needs {} elements but was given {}{}",
@@ -276,21 +272,23 @@ where
     hard: HashMap<(u8, u8), T>,
     soft: HashMap<(u8, u8), T>,
     pair: HashMap<(u8, u8), T>,
-    is_filled: bool,
 }
 
 impl<T> Table<T>
 where
     T: PartialEq + Copy,
 {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self {
+    pub fn new<I>(vals: I) -> Result<Self, TableError>
+    where
+        I: IntoIterator<Item = T>,
+    {
+        let mut t = Self {
             hard: HashMap::new(),
             soft: HashMap::new(),
             pair: HashMap::new(),
-            is_filled: false,
-        }
+        };
+        t.fill(vals)?;
+        Ok(t)
     }
 
     /// Fill the Table's subtables from the given iterable.
@@ -299,14 +297,11 @@ where
     /// The table must not have been filled already, else return an error.
     ///
     /// See Table's documentation for more information.
-    pub fn fill<I>(&mut self, vals: I) -> Result<(), TableError>
+    fn fill<I>(&mut self, vals: I) -> Result<(), TableError>
     where
         I: IntoIterator<Item = T>,
     {
         let mut cell_idx = 0;
-        if self.is_filled {
-            return Err(TableError::AlreadyFilled);
-        }
         let mut vals = vals.into_iter();
         // hard table
         for player_value in 5..=21 {
@@ -349,7 +344,6 @@ where
             return Err(TableError::IncorrectFillLength(NUM_CELLS, cell_idx + 1));
         }
         assert_eq!(NUM_CELLS, cell_idx);
-        self.is_filled = true;
         Ok(())
     }
 
@@ -395,9 +389,7 @@ where
     /// then lookup would fail and an error is returned. If a lookup fails because the calcuated
     /// key is missing (which should be impossible, but ... ya know ...), then return an error.
     pub fn get(&self, player_hand: &Hand, dealer_shows: Card) -> Result<T, TableError> {
-        if !self.is_filled {
-            return Err(TableError::NotFilled);
-        } else if player_hand.value() > 21 {
+        if player_hand.value() > 21 {
             return Err(TableError::HandIsBust(player_hand.clone(), dealer_shows));
         }
         assert!(player_hand.value() >= 2);
@@ -429,9 +421,7 @@ where
         dealer_shows: Card,
         val: T,
     ) -> Result<T, TableError> {
-        if !self.is_filled {
-            return Err(TableError::NotFilled);
-        } else if player_hand.value() > 21 {
+        if player_hand.value() > 21 {
             return Err(TableError::HandIsBust(player_hand.clone(), dealer_shows));
         }
         let table = self.get_subtable_mut(player_hand);
@@ -466,8 +456,7 @@ where
     /// An internal-only constructor for help during final deserialization
     ///
     /// Takes arrays for the hard, soft, and pair subtables, checks they are the correct length,
-    /// assumes they have all the right keys in their key/value pairs, builds the Table, and sets
-    /// its is_filled field to true.
+    /// assumes they have all the right keys in their key/value pairs, and builds the Table.
     fn from_raw_parts(
         hard: Vec<((u8, u8), T)>,
         soft: Vec<((u8, u8), T)>,
@@ -497,12 +486,7 @@ where
             }
             d
         };
-        let t = Self {
-            hard,
-            soft,
-            pair,
-            is_filled: true,
-        };
+        let t = Self { hard, soft, pair };
         if t.has_all_keys() {
             Ok(t)
         } else {
@@ -604,8 +588,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::{
-        dealer_card_from_desc, player_hand_from_desc, resps_from_buf, GameDesc, Resp, Table,
-        TableError,
+        dealer_card_from_desc, player_hand_from_desc, resps_from_buf, GameDesc, Table, TableError,
     };
     use super::{HARD_CELLS, NUM_CELLS, PAIR_CELLS, SOFT_CELLS};
     use crate::deck::{Card, Rank, Suit, ALL_RANKS};
@@ -763,9 +746,8 @@ PPPPPPPPPP
     #[test]
     fn fill_empty() {
         // Should fail to fill table with empty iter
-        let mut t = Table::<()>::new();
         assert_eq!(
-            t.fill(vec![]).unwrap_err(),
+            Table::<()>::new(vec![]).unwrap_err(),
             TableError::IncorrectFillLength(NUM_CELLS, 0)
         );
     }
@@ -774,9 +756,8 @@ PPPPPPPPPP
     fn fill_short() {
         // Should fail to fill with too few items
         for count in 1..NUM_CELLS {
-            let mut t = Table::<()>::new();
             assert_eq!(
-                t.fill(vec![(); count]).unwrap_err(),
+                Table::new(vec![(); count]).unwrap_err(),
                 TableError::IncorrectFillLength(NUM_CELLS, count)
             );
         }
@@ -786,9 +767,8 @@ PPPPPPPPPP
     fn fill_long() {
         // Should fail to fill with too few items
         for count in NUM_CELLS + 1..NUM_CELLS + 10 {
-            let mut t = Table::<()>::new();
             assert_eq!(
-                t.fill(vec![(); count]).unwrap_err(),
+                Table::new(vec![(); count]).unwrap_err(),
                 TableError::IncorrectFillLength(NUM_CELLS, NUM_CELLS + 1)
             );
         }
@@ -797,33 +777,21 @@ PPPPPPPPPP
     #[test]
     fn fill() {
         // Should succeed with exactly correct number of items
-        let mut t = Table::<()>::new();
-        assert!(t.fill(vec![(); NUM_CELLS]).is_ok());
-    }
-
-    #[test]
-    fn fill_twice() {
-        // cannot fill twice
-        let mut t = Table::<()>::new();
-        assert!(t.fill(vec![(); NUM_CELLS]).is_ok());
-        assert_eq!(
-            t.fill(vec![(); NUM_CELLS]).unwrap_err(),
-            TableError::AlreadyFilled
-        );
+        assert!(Table::new(vec![(); NUM_CELLS]).is_ok());
     }
 
     #[test]
     fn fill_responses() {
         // with our known-good strategy, try filling and make sure no error
-        let mut t: Table<Resp> = Table::new();
-        assert_eq!(t.fill(resps_from_buf(T1.as_bytes())), Ok(()));
+        assert!(Table::new(resps_from_buf(T1.as_bytes())).is_ok());
     }
 
     #[test]
     fn get_1() {
         // all 2-card hands against all dealer show cards have a best response
-        let mut t: Table<Resp> = Table::new();
-        assert_eq!(t.fill(resps_from_buf(T1.as_bytes())), Ok(()));
+        let t = Table::new(resps_from_buf(T1.as_bytes()));
+        assert!(t.is_ok());
+        let t = t.unwrap();
         for hand in all_club_pairs() {
             for dealer in all_clubs() {
                 assert!(t.get(&hand, dealer).is_ok());
@@ -834,8 +802,9 @@ PPPPPPPPPP
     #[test]
     fn get_2() {
         // 3-card hands should have a best response as long as they are worth 21 or less
-        let mut t: Table<Resp> = Table::new();
-        assert_eq!(t.fill(resps_from_buf(T1.as_bytes())), Ok(()));
+        let t = Table::new(resps_from_buf(T1.as_bytes()));
+        assert!(t.is_ok());
+        let t = t.unwrap();
         for hand in all_club_trios() {
             for dealer in all_clubs() {
                 assert_eq!(t.get(&hand, dealer).is_ok(), hand.value() <= 21);
@@ -850,10 +819,9 @@ PPPPPPPPPP
         // make double sure
         const NOT_VAL: u8 = 0;
         const VAL: u8 = 1;
-        let mut t: Table<u8> = Table::new();
         // fill all but the last cell with NOT_VAL. Last cell should have key [(A, A), A], which
         // has a pair of aces for the player hand
-        t.fill(
+        let t = Table::<u8>::new(
             repeat(NOT_VAL)
                 .take(NUM_CELLS - 1)
                 .chain(repeat(VAL).take(1)),
@@ -867,8 +835,7 @@ PPPPPPPPPP
     #[test]
     fn get_all() {
         // all values are stored in the expected positions
-        let mut t: Table<u16> = Table::new();
-        t.fill(0..NUM_CELLS as u16).unwrap();
+        let t = Table::new(0..NUM_CELLS as u16).unwrap();
         for (i, key) in all_unique_table_keys().into_iter() {
             //eprintln!("{} {:?}", i, key);
             assert_eq!(t.get(&key.0, key.1).unwrap(), i as u16);
@@ -876,30 +843,11 @@ PPPPPPPPPP
     }
 
     #[test]
-    fn get_notfilled() {
-        // get on unfilled table fails
-        let h = Hand::new(&vec![Card::new(Rank::RT, SUIT); 3]);
-        let c = Card::new(Rank::R2, SUIT);
-        let t: Table<()> = Table::new();
-        assert_eq!(t.get(&h, c).unwrap_err(), TableError::NotFilled);
-    }
-
-    #[test]
-    fn update_notfilled() {
-        // update on unfilled table fails
-        let h = Hand::new(&vec![Card::new(Rank::RT, SUIT); 3]);
-        let c = Card::new(Rank::R2, SUIT);
-        let mut t: Table<()> = Table::new();
-        assert_eq!(t.update(&h, c, ()).unwrap_err(), TableError::NotFilled);
-    }
-
-    #[test]
     fn get_bust() {
         // get on busted hand fails
         let h = Hand::new(&vec![Card::new(Rank::RT, SUIT); 3]);
         let c = Card::new(Rank::R2, SUIT);
-        let mut t: Table<()> = Table::new();
-        t.fill(repeat(()).take(NUM_CELLS)).unwrap();
+        let t = Table::new(repeat(()).take(NUM_CELLS)).unwrap();
         assert_eq!(t.get(&h, c).unwrap_err(), TableError::HandIsBust(h, c));
     }
 
@@ -908,8 +856,7 @@ PPPPPPPPPP
         // update on busted hand fails
         let h = Hand::new(&vec![Card::new(Rank::RT, SUIT); 3]);
         let c = Card::new(Rank::R2, SUIT);
-        let mut t: Table<()> = Table::new();
-        t.fill(repeat(()).take(NUM_CELLS)).unwrap();
+        let mut t = Table::new(repeat(()).take(NUM_CELLS)).unwrap();
         assert_eq!(
             t.update(&h, c, ()).unwrap_err(),
             TableError::HandIsBust(h, c)
@@ -919,8 +866,7 @@ PPPPPPPPPP
     #[test]
     fn update() {
         // updating always returns old value and correctly stores new value
-        let mut t: Table<u16> = Table::new();
-        t.fill(1..NUM_CELLS as u16 + 1).unwrap();
+        let mut t = Table::new(1..NUM_CELLS as u16 + 1).unwrap();
         for (i, key) in all_unique_table_keys().into_iter() {
             // cast once now to avoid doing it a bunch later, plus increment to match value stored
             // in table
@@ -935,8 +881,7 @@ PPPPPPPPPP
     #[test]
     fn serialize_identity() {
         // result of serialize -> deserialize is the same as the input
-        let mut t_in: Table<u16> = Table::new();
-        t_in.fill(0..NUM_CELLS as u16).unwrap();
+        let t_in = Table::new(0..NUM_CELLS as u16).unwrap();
         let bytes = serde_json::to_vec(&t_in).unwrap();
         let t_out: Table<u16> = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(t_in, t_out);
@@ -1050,10 +995,8 @@ PPPPPPPPPP
 
     #[test]
     fn addaddsign_1() {
-        let mut t1 = Table::new();
-        t1.fill(repeat(1).take(360)).unwrap();
-        let mut t2 = Table::new();
-        t2.fill(repeat(2).take(360)).unwrap();
+        let mut t1 = Table::new(repeat(1).take(360)).unwrap();
+        let t2 = Table::new(repeat(2).take(360)).unwrap();
         t1 += t2;
         for v in t1.values() {
             assert_eq!(*v, 3);
@@ -1062,12 +1005,8 @@ PPPPPPPPPP
 
     #[test]
     fn addaddsign_2() {
-        let mut t1 = Table::new();
-        t1.fill(repeat(0).take(359).chain(repeat(1).take(1)))
-            .unwrap();
-        let mut t2 = Table::new();
-        t2.fill(repeat(1).take(1).chain(repeat(0).take(359)))
-            .unwrap();
+        let mut t1 = Table::new(repeat(0).take(359).chain(repeat(1).take(1))).unwrap();
+        let t2 = Table::new(repeat(1).take(1).chain(repeat(0).take(359))).unwrap();
         t1 += t2;
         let num_worth_1 = t1.values().filter(|&&v| v == 1).count();
         assert_eq!(num_worth_1, 2);
