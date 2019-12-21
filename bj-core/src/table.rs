@@ -253,13 +253,11 @@ impl fmt::Display for TableError {
 
 /// Store something in each cell of a blackjack strategy card. E.g. the best move to make.
 ///
-/// Table::new() returns an empty table that then must be filled with Table::fill().
-///
 /// Table contains three logical subtables: the hard hands, soft hands, and pairs.  In all
 /// subtables there are 10 columns (dealer shows 2, 3, 4, ... ace). The first (hard) table has 17
 /// rows (player hand value 5-21). The second (soft) table has 9 rows (player hand value 13-21).
 /// The third (pairs) table has 10 rows (player hand pair of 2s, 3s, 4s ... 10s, aces). This
-/// results in 370 total cells. Table::fill() takes an iterable and fills in the subtables
+/// results in 360 total cells. Table::new() takes an iterable and fills in the subtables
 /// left-to-right and top-to-bottom one right after another.  For a visual example of what a Table
 /// looks like (e.g. if used to store the best move for a player to make), see the blackjack
 /// strategy cards on the Wizard of Odds website:
@@ -294,7 +292,6 @@ where
     /// Fill the Table's subtables from the given iterable.
     ///
     /// The iterable must be exactly 360 items in length, else return an error.
-    /// The table must not have been filled already, else return an error.
     ///
     /// See Table's documentation for more information.
     fn fill<I>(&mut self, vals: I) -> Result<(), TableError>
@@ -385,9 +382,9 @@ where
     }
 
     /// Lookup and return the value stored at the given location in the table, if it exists.
-    /// The table must already be filled, else an error is returned. If the player's hand is bust,
-    /// then lookup would fail and an error is returned. If a lookup fails because the calcuated
-    /// key is missing (which should be impossible, but ... ya know ...), then return an error.
+    /// If the player's hand is bust, then lookup would fail and an error is returned. If a lookup
+    /// fails because the calcuated key is missing (which should be impossible, but ... ya know
+    /// ...), then return an error.
     pub fn get(&self, player_hand: &Hand, dealer_shows: Card) -> Result<T, TableError> {
         if player_hand.value() > 21 {
             return Err(TableError::HandIsBust(player_hand.clone(), dealer_shows));
@@ -412,9 +409,9 @@ where
     /// Update the given (player_hand, dealer_shows) key to have a new value and return the old
     /// value.
     ///
-    /// If the table has not been filled, return an error. If the player's hand is bust, then
-    /// lookup would fail and an error is returned. Even after successfully inserting the new
-    /// value, if there was no original value, will return Err(TableError::MissingKeys)
+    /// If the player's hand is bust, then lookup would fail and an error is returned. Even after
+    /// successfully inserting the new value, if there was no original value, will return
+    /// Err(TableError::MissingKeys)
     pub fn update(
         &mut self,
         player_hand: &Hand,
@@ -744,7 +741,7 @@ PPPPPPPPPP
     }
 
     #[test]
-    fn fill_empty() {
+    fn new_empty() {
         // Should fail to fill table with empty iter
         assert_eq!(
             Table::<()>::new(vec![]).unwrap_err(),
@@ -753,7 +750,7 @@ PPPPPPPPPP
     }
 
     #[test]
-    fn fill_short() {
+    fn new_short() {
         // Should fail to fill with too few items
         for count in 1..NUM_CELLS {
             assert_eq!(
@@ -764,7 +761,7 @@ PPPPPPPPPP
     }
 
     #[test]
-    fn fill_long() {
+    fn new_long() {
         // Should fail to fill with too few items
         for count in NUM_CELLS + 1..NUM_CELLS + 10 {
             assert_eq!(
@@ -781,7 +778,7 @@ PPPPPPPPPP
     }
 
     #[test]
-    fn fill_responses() {
+    fn new_responses() {
         // with our known-good strategy, try filling and make sure no error
         assert!(Table::new(resps_from_buf(T1.as_bytes())).is_ok());
     }
