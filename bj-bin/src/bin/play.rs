@@ -17,7 +17,7 @@ fn _prompt_for_bet(
     in_buf: &mut impl BufRead,
     out_buf: &mut impl Write,
 ) -> io::Result<prompt::Command> {
-    let s = &format!("bet");
+    let s = "bet";
     loop {
         if let prompt::Command::Bet(amt) = prompt::prompt(s, in_buf, out_buf)? {
             break Ok(prompt::Command::Bet(amt));
