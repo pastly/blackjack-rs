@@ -274,20 +274,22 @@ impl<T> Table<T>
 where
     T: PartialEq + Copy,
 {
+    /// Construct a new Table from the given iterable.
+    ///
+    /// The iterable must be exactly 360 items in length, else returns a TableError.
+    ///
+    /// See Table's documentation for more information.
     pub fn new<I>(vals: I) -> Result<Self, TableError>
     where
         I: IntoIterator<Item = T>,
     {
-        let mut t = Self { 0: HashMap::new() };
+        let mut t = Self {
+            0: HashMap::with_capacity(NUM_CELLS),
+        };
         t.fill(vals)?;
         Ok(t)
     }
 
-    /// Fill the Table's subtables from the given iterable.
-    ///
-    /// The iterable must be exactly 360 items in length, else return an error.
-    ///
-    /// See Table's documentation for more information.
     fn fill<I>(&mut self, vals: I) -> Result<(), TableError>
     where
         I: IntoIterator<Item = T>,
@@ -435,7 +437,7 @@ where
     /// assumes they have all the right keys in their key/value pairs, and builds the Table.
     fn from_raw_parts(v: Vec<(GameDesc, T)>) -> Result<Self, TableError> {
         assert_eq!(v.len(), NUM_CELLS);
-        let mut d = HashMap::new();
+        let mut d = HashMap::with_capacity(NUM_CELLS);
         for kv in v.into_iter() {
             d.insert(kv.0, kv.1);
         }
