@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let count = table.get(&hand, dealer)?;
         table.update(&hand, dealer, count + 1)?;
     }
-    let mut hands: Vec<(GameDesc, &usize)> = table.iter().collect();
+    let mut hands: Vec<(&GameDesc, &usize)> = table.iter().collect();
     hands.sort_by_key(|a| a.1);
     hands.reverse();
     for h in hands.iter().take(10) {

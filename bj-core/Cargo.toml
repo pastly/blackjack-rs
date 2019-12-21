@@ -9,5 +9,6 @@ edition = "2018"
 [dependencies]
 rand = "0.7"
 serde = {version = "1.0", features = ["derive"]}
+serde_derive = "1.0"
 serde_json = "1.0"
 readfilter = "0.1"
