@@ -77,7 +77,7 @@ impl GameDesc {
     }
 }
 
-/// Get a Hand that matches the given GameDesc.
+/// Get an arbitrary Hand that matches the given GameDesc.
 ///
 /// While this function currently returns the same hand given the same input, this is not
 /// guaranteed to be the case always.
@@ -147,7 +147,7 @@ pub fn player_hand_from_desc(desc: GameDesc) -> Result<Hand, HandError> {
     Ok(hand)
 }
 
-/// Get the card that matches the dealer's card in the given GameDesc
+/// Get an arbitrary card that matches the dealer's card in the given GameDesc
 ///
 /// While this function currently returns the same card given the same input, this is not
 /// guaranteed to always be the case. The suit might change in future implementations.
