@@ -1,5 +1,5 @@
 use bj_bin::prompt;
-use bj_bin::utils::{read_maybexz, write_maybexz};
+use bj_bin::utils::{create_if_not_exist, read_maybexz, write_maybexz};
 use bj_core::deck::{rand_suit, Card, Deck, Rank};
 use bj_core::hand::{rand_hand, Hand};
 use bj_core::playstats::PlayStats;
@@ -7,7 +7,6 @@ use bj_core::table::{resps_from_buf, GameDesc, Table};
 use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, App, Arg};
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
-use serde::Serialize;
 use std::fmt;
 use std::fs::OpenOptions;
 use std::io::{self, BufRead, BufReader, Write};
@@ -94,34 +93,6 @@ fn prompt(
                 continue;
             }
             cmd => break Ok(cmd),
-        }
-    }
-}
-
-/// Create the given file if it doesn't already exist. If it needs to be created, fill it with the
-/// given serializable data. Otherwise don't use the given data at all. Bubbles up any file system
-/// errors (other than the error of "already exists." Panics if unable to serialize/write the data
-/// to the file.
-fn create_if_not_exist<T>(fname: &str, data: &T) -> Result<(), Box<dyn std::error::Error>>
-where
-    T: Serialize,
-{
-    match OpenOptions::new().create_new(true).write(true).open(fname) {
-        Ok(fd) => {
-            // able to create the file, so we need to fill it
-            println!("Creating and filling {}", fname);
-            match write_maybexz(fd, data, fname.ends_with(".xz")) {
-                Ok(_) => Ok(()),
-                Err(e) => Err(e.into()),
-            }
-        }
-        Err(e) => {
-            // unable to create the file, and that might be because it already exists.
-            // ignore errors from it already existing, but bubble up all others
-            match e.kind() {
-                io::ErrorKind::AlreadyExists => Ok(()),
-                _ => Err(e.into()),
-            }
         }
     }
 }
