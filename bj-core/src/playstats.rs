@@ -1,3 +1,23 @@
+//! Keep track of how often player sees an event and chooses the correct response to that event.
+//!
+//! Example 1: opening player hand vs. dealer card --> did player choose hit/stand/etc. correctly
+//! according to basic strategy.
+//!
+//! Example 2: presented with a set of cards --> did player calculate the HiLo count correctly.
+//!
+//! PlayStats calculates a weight for the event based on player's past performance.
+//! It simply stores the number of seen and number of correct. Seen must always be equal to or
+//! greater than correct.
+//!
+//! The weight is a value in (0, 1] and is only 1 exactly if seen is 0. Weight calculation is
+//!
+//!     1 - correct / (seen + 1)
+//!
+//! - Weight of untouched PlayStats is 1 = (1 - 0/1)
+//! - Weight of PlayStats with 1 wrong is 1.0 = (1 - 0/2)
+//! - Weight of PlayStats with 1 correct is 0.5 = (1 - 1/2)
+//! - Weight of PlayStats with 2 correct is 0.333 = (1 - 2/3)
+//! - Weight of PlayStats with 1 correct/1 wrong is 0.666 = (1 - 1/3)
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, PartialEq, Copy, Clone, Default, Debug)]
@@ -14,14 +34,6 @@ impl PlayStats {
     }
 
     pub fn weight(self) -> f32 {
-        // Written such that this always produces a weight in (0, 1) if the PlayStats has been
-        // incremented, or 1 if it hasn't.
-        // - weight of untouched PlayStats is 1 = (1 - 0/1)
-        // - weight of PlayStats with 1 wrong is 1.0 = (1 - 0/2)
-        // - weight of PlayStats with 1 correct is 0.5 = (1 - 1/2)
-        // - weight of PlayStats with 2 correct is 0.333 = (1 - 2/3)
-        // - weight of PlayStats with 1 correct/1 wrong is 0.666 = (1 - 1/3)
-        //
         // The +1 prevents division by zero. It also means that the inclusive side of the (0, 1)
         // range is at 1 instead of 0. Without the +1, getting a hand correct on the very first try
         // would result in 1 - 1/1 == 0. Zero weight means the player will never see it again. We
