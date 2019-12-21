@@ -1,8 +1,8 @@
 use crate::deck::{rand_suit, Card, Rank};
 use crate::table::GameDesc;
 use rand::prelude::*;
+use serde_derive::{Deserialize, Serialize};
 use std::fmt;
-use serde_derive::{Serialize, Deserialize};
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Serialize, Deserialize)]
 pub enum HandType {
