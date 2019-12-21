@@ -129,6 +129,16 @@ impl Hand {
         }
         Ok((self.cards[0], self.cards[1]))
     }
+
+    /// Returns an interator over the cards in this hand
+    pub fn cards(&self) -> impl Iterator<Item = &Card> {
+        self.cards.iter()
+    }
+
+    /// Consumes this hand and returns an iterator over the cards in this hand
+    pub fn into_cards(self) -> impl IntoIterator<Item = Card> {
+        self.cards.into_iter()
+    }
 }
 
 #[derive(Debug, PartialEq)]

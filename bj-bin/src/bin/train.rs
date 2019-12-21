@@ -246,6 +246,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
             prompt::Command::Bet(_) => unreachable!(),
+            prompt::Command::Num(_) => unreachable!(),
             prompt::Command::Resp(_) => { /* will handle below */ }
         };
         let resp = if let prompt::Command::Resp(r) = command {

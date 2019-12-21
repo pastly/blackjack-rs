@@ -1,12 +1,16 @@
 use bj_core::table::{resp_from_char, Resp};
 use std::io::{self, BufRead, Write};
 
+type NumType = i32;
+type BetType = u32;
+
 #[derive(Debug, PartialEq)]
 pub enum Command {
     Quit,
     Save,
     SaveQuit,
-    Bet(u32),
+    Num(NumType),
+    Bet(BetType),
     Resp(Resp),
 }
 
@@ -16,6 +20,7 @@ impl std::fmt::Display for Command {
             Command::Quit => write!(f, "Quit"),
             Command::Save => write!(f, "Save"),
             Command::SaveQuit => write!(f, "SaveQuit"),
+            Command::Num(val) => write!(f, "Num({})", val),
             Command::Bet(amt) => write!(f, "Bet({})", amt),
             Command::Resp(r) => write!(f, "Resp({})", r),
         }
@@ -34,6 +39,8 @@ fn command_from_str(s: &str) -> Option<Command> {
             Some(Command::Save)
         } else if words[0] == "SAVEQUIT" {
             Some(Command::SaveQuit)
+        } else if let Ok(val) = words[0].parse::<NumType>() {
+            Some(Command::Num(val))
         } else if words[0].len() == 1 {
             if let Some(resp) = resp_from_char(words[0].chars().nth(0).unwrap()) {
                 Some(Command::Resp(resp))
@@ -45,7 +52,7 @@ fn command_from_str(s: &str) -> Option<Command> {
         }
     } else if words.len() == 2 {
         if words[0] == "BET" || words[0] == "B" {
-            if let Ok(amt) = words[1].parse::<u32>() {
+            if let Ok(amt) = words[1].parse::<BetType>() {
                 Some(Command::Bet(amt))
             } else {
                 None
