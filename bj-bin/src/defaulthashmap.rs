@@ -1,7 +1,9 @@
 //! A HashMap that returns the configured default value if an existing value does not already exist
+use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::Hash;
 
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct DefaultHashMap<K, V>
 where
     K: Hash + Eq + Copy,
@@ -74,12 +76,30 @@ mod tests {
 
     #[test]
     fn insert() {
-        let mut m: DHM<u8, u8> = DHM::new(255);
+        let mut m: DHM<u8, u8> = DHM::new(69);
         // first insert returns None because no existing value
         assert_eq!(m.insert(1, 1), None);
         // futhrer inserts at same key return Some because existing value
         assert_eq!(m.insert(1, 2), Some(1));
         assert_eq!(m.insert(1, 3), Some(2));
         assert_eq!(m.insert(1, 4), Some(3));
+    }
+
+    #[test]
+    fn serialize_identity_empty() {
+        let input: DHM<u8, u8> = DHM::new(69);
+        let bytes = serde_json::to_vec(&input).unwrap();
+        let output: DHM<u8, u8> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(input, output);
+    }
+
+    #[test]
+    fn serialize_identity() {
+        let mut input: DHM<u8, u8> = DHM::new(69);
+        let _ = input.get(&7);
+        input.insert(99, 4);
+        let bytes = serde_json::to_vec(&input).unwrap();
+        let output: DHM<u8, u8> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(input, output);
     }
 }
