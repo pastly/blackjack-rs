@@ -54,6 +54,10 @@ where
     pub fn is_empty(&self) -> bool {
         self.hm.len() == 0
     }
+
+    pub fn contains_key(&self, k: &K) -> bool {
+        self.hm.contains_key(k)
+    }
 }
 
 #[cfg(test)]
@@ -101,5 +105,13 @@ mod tests {
         let bytes = serde_json::to_vec(&input).unwrap();
         let output: DHM<u8, u8> = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(input, output);
+    }
+
+    #[test]
+    fn contains_key() {
+        let mut m: DHM<u8, ()> = DHM::new(());
+        assert!(!m.contains_key(&1));
+        m.insert(1, ());
+        assert!(m.contains_key(&1));
     }
 }
