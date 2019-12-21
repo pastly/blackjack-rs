@@ -1,8 +1,8 @@
 use crate::deck::{Card, Rank, Suit};
+use crate::hand::{Hand, HandError, HandType};
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 use serde_derive;
-use crate::hand::{Hand, HandError, HandType};
 use std::collections::HashMap;
 use std::fmt;
 use std::io::Read;
@@ -58,7 +58,9 @@ const PAIR_KEYS: [(u8, u8); PAIR_CELLS] = [
 ];
 
 /// Key used in Table
-#[derive(PartialEq, Debug, Copy, Clone, Eq, Hash, serde_derive::Serialize, serde_derive::Deserialize)]
+#[derive(
+    PartialEq, Debug, Copy, Clone, Eq, Hash, serde_derive::Serialize, serde_derive::Deserialize,
+)]
 pub struct GameDesc {
     pub hand: HandType,
     pub player: u8,
@@ -264,14 +266,9 @@ impl fmt::Display for TableError {
 /// strategy cards on the Wizard of Odds website:
 /// https://wizardofodds.com/games/blackjack/strategy/calculator/.
 #[derive(Debug, PartialEq)]
-pub struct Table<T>
+pub struct Table<T>(HashMap<GameDesc, T>)
 where
-    T: PartialEq + Copy,
-{
-    hard: HashMap<GameDesc, T>,
-    soft: HashMap<GameDesc, T>,
-    pair: HashMap<GameDesc, T>,
-}
+    T: PartialEq + Copy;
 
 impl<T> Table<T>
 where
@@ -281,11 +278,7 @@ where
     where
         I: IntoIterator<Item = T>,
     {
-        let mut t = Self {
-            hard: HashMap::new(),
-            soft: HashMap::new(),
-            pair: HashMap::new(),
-        };
+        let mut t = Self { 0: HashMap::new() };
         t.fill(vals)?;
         Ok(t)
     }
@@ -306,7 +299,7 @@ where
             for dealer_up in 2..=11 {
                 let k = GameDesc::new(HandType::Hard, player_value, dealer_up);
                 if let Some(v) = vals.next() {
-                    assert!(self.hard.insert(k, v).is_none());
+                    assert!(self.0.insert(k, v).is_none());
                     cell_idx += 1;
                 } else {
                     return Err(TableError::IncorrectFillLength(NUM_CELLS, cell_idx));
@@ -318,7 +311,7 @@ where
             for dealer_up in 2..=11 {
                 let k = GameDesc::new(HandType::Soft, player_value, dealer_up);
                 if let Some(v) = vals.next() {
-                    assert!(self.soft.insert(k, v).is_none());
+                    assert!(self.0.insert(k, v).is_none());
                     cell_idx += 1;
                 } else {
                     return Err(TableError::IncorrectFillLength(NUM_CELLS, cell_idx));
@@ -331,7 +324,7 @@ where
             for dealer_up in 2..=11 {
                 let k = GameDesc::new(HandType::Pair, *player_value, dealer_up);
                 if let Some(v) = vals.next() {
-                    assert!(self.pair.insert(k, v).is_none());
+                    assert!(self.0.insert(k, v).is_none());
                     cell_idx += 1;
                 } else {
                     return Err(TableError::IncorrectFillLength(NUM_CELLS, cell_idx));
@@ -343,26 +336,6 @@ where
         }
         assert_eq!(NUM_CELLS, cell_idx);
         Ok(())
-    }
-
-    fn get_subtable(&self, player_hand: &Hand) -> &HashMap<GameDesc, T> {
-        if player_hand.is_pair() {
-            &self.pair
-        } else if player_hand.is_soft() {
-            &self.soft
-        } else {
-            &self.hard
-        }
-    }
-
-    fn get_subtable_mut(&mut self, player_hand: &Hand) -> &mut HashMap<GameDesc, T> {
-        if player_hand.is_pair() {
-            &mut self.pair
-        } else if player_hand.is_soft() {
-            &mut self.soft
-        } else {
-            &mut self.hard
-        }
     }
 
     fn key(player_hand: &Hand, dealer_shows: Card) -> GameDesc {
@@ -379,7 +352,13 @@ where
         } else {
             dealer_shows.value()
         };
-        let ty = if player_hand.is_pair() { HandType::Pair } else if player_hand.is_soft() { HandType::Soft } else { HandType::Hard };
+        let ty = if player_hand.is_pair() {
+            HandType::Pair
+        } else if player_hand.is_soft() {
+            HandType::Soft
+        } else {
+            HandType::Hard
+        };
         GameDesc::new(ty, p, d)
     }
 
@@ -392,9 +371,8 @@ where
             return Err(TableError::HandIsBust(player_hand.clone(), dealer_shows));
         }
         assert!(player_hand.value() >= 2);
-        let table = self.get_subtable(player_hand);
         let key = Table::<T>::key(player_hand, dealer_shows);
-        if let Some(v) = table.get(&key) {
+        if let Some(v) = self.0.get(&key) {
             Ok(*v)
         } else {
             Err(TableError::MissingKeys(format!(
@@ -423,9 +401,8 @@ where
         if player_hand.value() > 21 {
             return Err(TableError::HandIsBust(player_hand.clone(), dealer_shows));
         }
-        let table = self.get_subtable_mut(player_hand);
         let key = Table::<T>::key(player_hand, dealer_shows);
-        match table.insert(key, val) {
+        match self.0.insert(key, val) {
             Some(old) => Ok(old),
             None => Err(TableError::MissingKeys(format!(
                 "There was no old value at hand {} with dealer {}. soft={} pair={} key={:?}",
@@ -443,49 +420,26 @@ where
     /// Checks if the given table has all the correct keys in its subtables
     fn has_all_keys(&self) -> bool {
         // easy check: do all subtables have the right number of keys
-        self.hard.len() == HARD_CELLS
-            && self.soft.len() == SOFT_CELLS
-            && self.pair.len() == PAIR_CELLS
+        self.0.keys().filter(|k| k.hand == HandType::Hard).count() == HARD_CELLS
+            && self.0.keys().filter(|k| k.hand == HandType::Soft).count() == SOFT_CELLS
+            && self.0.keys().filter(|k| k.hand == HandType::Pair).count() == PAIR_CELLS
             // harder check: are there any keys that don't exist in the subtables
-            && HARD_KEYS.iter().filter(|k| self.hard.contains_key(&GameDesc::new(HandType::Hard, k.0, k.1))).count() == HARD_CELLS
-            && SOFT_KEYS.iter().filter(|k| self.soft.contains_key(&GameDesc::new(HandType::Soft, k.0, k.1))).count() == SOFT_CELLS
-            && PAIR_KEYS.iter().filter(|k| self.pair.contains_key(&GameDesc::new(HandType::Pair, k.0, k.1))).count() == PAIR_CELLS
+            && HARD_KEYS.iter().filter(|k| self.0.contains_key(&GameDesc::new(HandType::Hard, k.0, k.1))).count() == HARD_CELLS
+            && SOFT_KEYS.iter().filter(|k| self.0.contains_key(&GameDesc::new(HandType::Soft, k.0, k.1))).count() == SOFT_CELLS
+            && PAIR_KEYS.iter().filter(|k| self.0.contains_key(&GameDesc::new(HandType::Pair, k.0, k.1))).count() == PAIR_CELLS
     }
 
     /// An internal-only constructor for help during final deserialization
     ///
     /// Takes arrays for the hard, soft, and pair subtables, checks they are the correct length,
     /// assumes they have all the right keys in their key/value pairs, and builds the Table.
-    fn from_raw_parts(
-        hard: Vec<(GameDesc, T)>,
-        soft: Vec<(GameDesc, T)>,
-        pair: Vec<(GameDesc, T)>,
-    ) -> Result<Self, TableError> {
-        assert_eq!(hard.len(), HARD_CELLS);
-        assert_eq!(soft.len(), SOFT_CELLS);
-        assert_eq!(pair.len(), PAIR_CELLS);
-        let hard = {
-            let mut d = HashMap::<GameDesc, T>::new();
-            for kv in hard.into_iter() {
-                d.insert(kv.0, kv.1);
-            }
-            d
-        };
-        let soft = {
-            let mut d = HashMap::<GameDesc, T>::new();
-            for kv in soft.into_iter() {
-                d.insert(kv.0, kv.1);
-            }
-            d
-        };
-        let pair = {
-            let mut d = HashMap::<GameDesc, T>::new();
-            for kv in pair.into_iter() {
-                d.insert(kv.0, kv.1);
-            }
-            d
-        };
-        let t = Self { hard, soft, pair };
+    fn from_raw_parts(v: Vec<(GameDesc, T)>) -> Result<Self, TableError> {
+        assert_eq!(v.len(), NUM_CELLS);
+        let mut d = HashMap::new();
+        for kv in v.into_iter() {
+            d.insert(kv.0, kv.1);
+        }
+        let t = Self { 0: d };
         if t.has_all_keys() {
             Ok(t)
         } else {
@@ -496,21 +450,15 @@ where
     }
 
     pub fn values(&self) -> impl Iterator<Item = &T> {
-        let h = self.hard.values();
-        let s = self.soft.values();
-        let p = self.pair.values();
-        h.chain(s).chain(p)
+        self.0.values()
     }
 
     pub fn values_mut(&mut self) -> impl Iterator<Item = &mut T> {
-        let h = self.hard.values_mut();
-        let s = self.soft.values_mut();
-        let p = self.pair.values_mut();
-        h.chain(s).chain(p)
+        self.0.values_mut()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&GameDesc, &T)> {
-        self.hard.iter().chain(self.soft.iter()).chain(self.pair.iter())
+        self.0.iter()
     }
 }
 
@@ -537,15 +485,8 @@ where
     where
         S: Serializer,
     {
-        let len = self.hard.len() + self.soft.len() + self.pair.len();
-        let mut seq = serializer.serialize_seq(Some(len))?;
-        for e in self.hard.iter() {
-            seq.serialize_element(&e)?;
-        }
-        for e in self.soft.iter() {
-            seq.serialize_element(&e)?;
-        }
-        for e in self.pair.iter() {
+        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
+        for e in self.0.iter() {
             seq.serialize_element(&e)?;
         }
         seq.end()
@@ -560,15 +501,10 @@ where
     where
         D: Deserializer<'de>,
     {
-        let mut hard: Vec<(GameDesc, T)> = Vec::deserialize(deserializer)?;
-        assert_eq!(hard.len(), NUM_CELLS);
-        let mut soft = hard.split_off(HARD_CELLS);
-        let pair = soft.split_off(SOFT_CELLS);
-        assert_eq!(hard.len(), HARD_CELLS);
-        assert_eq!(soft.len(), SOFT_CELLS);
-        assert_eq!(pair.len(), PAIR_CELLS);
+        let v: Vec<(GameDesc, T)> = Vec::deserialize(deserializer)?;
+        assert_eq!(v.len(), NUM_CELLS);
         //Ok(Self::from_raw_parts(hard, soft, pair))
-        Self::from_raw_parts(hard, soft, pair).map_err(serde::de::Error::custom)
+        Self::from_raw_parts(v).map_err(serde::de::Error::custom)
     }
 }
 
@@ -878,10 +814,11 @@ PPPPPPPPPP
     fn from_raw_parts_missing_keys() {
         // sending Vecs with missing keys to Table::from_raw_parts() causes it to fail to build a
         // Table
-        let h = vec![(GameDesc::new(HandType::Hard, 0, 0), 0); HARD_CELLS];
-        let s = vec![(GameDesc::new(HandType::Soft, 0, 0), 0); SOFT_CELLS];
-        let p = vec![(GameDesc::new(HandType::Pair, 0, 0), 0); PAIR_CELLS];
-        if let Err(e) = Table::from_raw_parts(h, s, p) {
+        let h = vec![(GameDesc::new(HandType::Hard, 0, 0), 0); HARD_CELLS].into_iter();
+        let s = vec![(GameDesc::new(HandType::Soft, 0, 0), 0); SOFT_CELLS].into_iter();
+        let p = vec![(GameDesc::new(HandType::Pair, 0, 0), 0); PAIR_CELLS].into_iter();
+        let v: Vec<(GameDesc, u8)> = h.chain(s).chain(p).collect();
+        if let Err(e) = Table::from_raw_parts(v) {
             match e {
                 TableError::MissingKeys(_) => {}
                 _ => panic!(format!("Got the wrong type of error: {}", e)),
