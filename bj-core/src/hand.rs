@@ -136,7 +136,7 @@ impl Hand {
     }
 
     /// Consumes this hand and returns an iterator over the cards in this hand
-    pub fn into_cards(self) -> impl IntoIterator<Item = Card> {
+    pub fn into_cards(self) -> std::vec::IntoIter<Card> {
         self.cards.into_iter()
     }
 }

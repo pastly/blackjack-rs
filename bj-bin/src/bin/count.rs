@@ -1,8 +1,16 @@
+use bj_bin::defaulthashmap::DefaultHashMap;
 use bj_bin::prompt;
+use bj_bin::utils::{create_if_not_exist, read_maybexz, write_maybexz};
 use bj_core::deck::{Card, Deck};
 use bj_core::hand::Hand;
+use bj_core::playstats::PlayStats;
 use clap::{crate_authors, crate_name, crate_version, value_t, App, Arg};
+use std::fs::OpenOptions;
 use std::io::{self, BufRead, BufReader, Write};
+
+fn def_countstats_table() -> DefaultHashMap<Vec<u8>, PlayStats> {
+    DefaultHashMap::new(PlayStats::new())
+}
 
 fn count_of_card(c: Card) -> i8 {
     match c.value() {
@@ -55,14 +63,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if num_cards == 0 {
         return Err("Must specify at least 1 card".into());
     }
+    let stats_fname = format!("count-stats-{}.json.xz", num_cards);
+    let mut stats: DefaultHashMap<Vec<u8>, PlayStats> = {
+        create_if_not_exist(&stats_fname, &def_countstats_table())?;
+        let fd = OpenOptions::new().read(true).open(&stats_fname).unwrap();
+        read_maybexz(fd, stats_fname.ends_with(".xz"))?
+    };
     let mut input = BufReader::new(io::stdin());
     let mut output = io::stdout();
     let mut deck = Deck::new_infinite();
     loop {
-        let (actual, cmd) = if num_cards == 1 {
+        let (cards, actual, cmd) = if num_cards == 1 {
             let c = deck.draw()?;
             let cmd = prompt_for_num(&c, &mut input, &mut output)?;
-            (count_of_card(c), cmd)
+            (vec![c.value()], count_of_card(c), cmd)
         } else {
             let h = Hand::new(
                 &(0..num_cards)
@@ -70,7 +84,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .collect::<Vec<_>>(),
             );
             let cmd = prompt_for_num(&h, &mut input, &mut output)?;
-            (count_of_hand(&h), cmd)
+            let count = count_of_hand(&h);
+            (h.into_cards().map(|c| c.value()).collect(), count, cmd)
         };
         let val = match cmd {
             prompt::Command::Quit => return Ok(()),
@@ -81,6 +96,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Correct");
         } else {
             println!("count is {}", actual);
+        }
+        let stat = stats.get_mut(&cards);
+        stat.inc(val == actual);
+        {
+            let fd = OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .open(&stats_fname)?;
+            write_maybexz(fd, &stats, stats_fname.ends_with(".xz"))?;
         }
     }
 }

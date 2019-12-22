@@ -1,12 +1,13 @@
 //! A HashMap that returns the configured default value if an existing value does not already exist
-use serde_derive::{Deserialize, Serialize};
+use serde::de::{Deserialize, Deserializer};
+use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::collections::HashMap;
 use std::hash::Hash;
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Debug)]
 pub struct DefaultHashMap<K, V>
 where
-    K: Hash + Eq + Copy,
+    K: Hash + Eq + Clone,
     V: Clone,
 {
     hm: HashMap<K, V>,
@@ -15,7 +16,7 @@ where
 
 impl<K, V> DefaultHashMap<K, V>
 where
-    K: Hash + Eq + Copy,
+    K: Hash + Eq + Clone,
     V: Clone,
 {
     pub fn new(def: V) -> Self {
@@ -29,7 +30,7 @@ where
     /// value.
     fn maybe_insert_default(&mut self, k: &K) {
         if !self.hm.contains_key(k) {
-            self.insert(*k, self.def.clone());
+            self.insert(k.clone(), self.def.clone());
         }
     }
 
@@ -59,6 +60,42 @@ where
         self.hm.contains_key(k)
     }
 }
+
+impl<K, V> Serialize for DefaultHashMap<K, V>
+where
+    K: Hash + Eq + Clone + Serialize,
+    V: Clone + Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry("def", &self.def)?;
+        map.serialize_entry("hm", &self.hm)?;
+        //let mut seq = map.serialize_seq(Some(self.hm.len()))?;
+        //for e in self.hm.iter() {
+        //    seq.serialize_element(&e)?;
+        //}
+        //seq.end()?;
+        map.end()
+    }
+}
+
+//impl<'de, K, V> Deserialize<'de> for DefaultHashMap<K, V>
+//where
+//    K: Hash + Eq + Clone + Deserialize<'de>,
+//    V: Clone + Deserialize<'de>,
+//{
+//    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//    where
+//        D: Deserializer<'de>,
+//    {
+//        let v: Vec<(K, V)> = Vec::deserialize(deserializer)?;
+//        Self::new(
+//        Self::from_raw_parts(v).map_err(serde::de::Error::custom)
+//    }
+//}
 
 #[cfg(test)]
 mod tests {
