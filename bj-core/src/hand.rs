@@ -421,7 +421,7 @@ mod tests {
                 let desc = GameDesc::new(HandType::Soft, v, DEALER_VAL);
                 let h = rand_hand(desc).unwrap();
                 assert_eq!(h.value(), v);
-                assert!(h.cards.iter().filter(|c| c.rank == Rank::RA).count() >= 1);
+                assert!(h.cards.iter().filter(|c| c.rank() == Rank::RA).count() >= 1);
             }
         }
     }
@@ -452,15 +452,15 @@ mod tests {
     fn value_le_21() {
         for hand in all_2card_hands() {
             // if the first card is an ace, let it be worth 11
-            let mut v = if hand.cards[0].rank == Rank::RA {
+            let mut v = if hand.cards[0].rank() == Rank::RA {
                 11
             } else {
                 hand.cards[0].value()
             };
-            if hand.cards[1].rank == Rank::RA && v == 11 {
+            if hand.cards[1].rank() == Rank::RA && v == 11 {
                 // if second card is ace, if first card was also ace, just add one for total of 12
                 v += 1;
-            } else if hand.cards[1].rank == Rank::RA {
+            } else if hand.cards[1].rank() == Rank::RA {
                 // else if second card is ace, there's room for it to be worth 11
                 v += 11;
             } else {
@@ -491,7 +491,7 @@ mod tests {
         for mut hand in all_2card_hands() {
             // skip if already have ace
             assert_eq!(hand.cards.len(), 2);
-            if hand.cards[0].rank == Rank::RA || hand.cards[1].rank == Rank::RA {
+            if hand.cards[0].rank() == Rank::RA || hand.cards[1].rank() == Rank::RA {
                 continue;
             }
             // note whether we expect it to be soft with an added ace
@@ -536,7 +536,7 @@ mod tests {
         for mut hand in all_2card_hands() {
             let orig_val = hand.value();
             // for this test, skip hands that start out with more than 0 aces
-            if hand.cards[0].rank == Rank::RA || hand.cards[1].rank == Rank::RA {
+            if hand.cards[0].rank() == Rank::RA || hand.cards[1].rank() == Rank::RA {
                 continue;
             }
             hand.cards.push(Card::new(Rank::RA, SUIT));
