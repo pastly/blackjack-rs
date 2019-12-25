@@ -341,7 +341,7 @@ where
     }
 
     fn key(player_hand: &Hand, dealer_shows: Card) -> GameDesc {
-        let p = if player_hand.is_pair() && player_hand.cards[0].rank == Rank::RA {
+        let p = if player_hand.is_pair() && player_hand.cards[0].rank() == Rank::RA {
             // player having a pair of aces is a special case. Hand::value() returns 12, which
             // causes a lookup in the pair take for a pair of 6s. Thus aces are stored with keys
             // with player hand value 22.
