@@ -1,0 +1,1 @@
+../pkg/bj_web.js
