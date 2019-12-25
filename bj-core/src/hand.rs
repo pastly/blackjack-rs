@@ -46,7 +46,7 @@ impl Hand {
         // 11 or less (i.e. there's "room" for at least one ace to be worth 11 instead of 1).
         // Cannot trivially use Hand::value() to get value as it returns the highest possible
         // value for non-bust hands.
-        let have_ace = self.cards.iter().filter(|c| c.rank == Rank::RA).count() > 0;
+        let have_ace = self.cards.iter().filter(|c| c.rank() == Rank::RA).count() > 0;
         let v = self.cards.iter().fold(0, |acc, c| acc + c.value());
         v <= 11 && have_ace
     }
@@ -60,7 +60,7 @@ impl Hand {
         let mut num_ace = 0;
         let mut acc = 0;
         for c in self.cards.iter() {
-            acc += match c.rank {
+            acc += match c.rank() {
                 Rank::R2
                 | Rank::R3
                 | Rank::R4

@@ -108,7 +108,7 @@ impl fmt::Display for Rank {
 #[derive(Hash, PartialEq, Eq, PartialOrd, Clone, Copy, Debug)]
 pub struct Card {
     suit: Suit,
-    pub(crate) rank: Rank,
+    rank: Rank,
 }
 
 impl fmt::Display for Card {
@@ -124,6 +124,14 @@ impl Card {
 
     pub fn value(self) -> u8 {
         self.rank.value()
+    }
+
+    pub fn suit(self) -> Suit {
+        self.suit
+    }
+
+    pub fn rank(self) -> Rank {
+        self.rank
     }
 }
 
