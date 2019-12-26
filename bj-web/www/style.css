@@ -12,19 +12,27 @@ div {
 	margin: 0 auto;
 	display: grid;
 	grid-template-columns: auto auto;
-	grid-template-rows: auto auto auto auto;
+	grid-template-rows: auto auto auto auto auto auto;
 	grid-template-areas:
 		"player_label player_cards"
 		"dealer_label dealer_cards"
-		"buttons      buttons"
-		"stats        stats";
+		"buttons      buttons     "
+		"stats        stats       "
+		"hint         hint        "
+		"strat        strat       ";
 }
 
 #player_label { grid-area: player_label; }
 #dealer_label { grid-area: dealer_label; }
 #buttons { grid-area: buttons; }
 #stats { grid-area: stats; }
+#hint { grid-area: hint; }
+#strat { grid-area: strat; }
 
 .card {
 	font-size: 250%;
+}
+
+.hide {
+	display: none;
 }
