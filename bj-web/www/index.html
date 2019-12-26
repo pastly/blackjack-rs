@@ -13,7 +13,12 @@
       // will "boot" the module and make it ready to use. Currently browsers
       // don't support natively imported WebAssembly as an ES module, but
       // eventually the manual initialization won't be required!
-      import init, { init_panic_hook, gen_card, gen_hand } from './bj_web.js';
+      import init, {
+        on_button_hit,
+	on_button_stand,
+	on_button_double,
+	on_button_split,
+	} from './bj_web.js';
 
       async function run() {
         // First up we need to actually load the wasm file, so we use the
@@ -36,31 +41,55 @@
         //console.log(`1 + 2 = ${result}`);
         //if (result !== 3)
         //  throw new Error("wasm addition doesn't work!");
-        init_panic_hook();
-        console.log(gen_hand());
+        //init_panic_hook();
       }
 
       run();
-      window.gen_card = gen_card;
-      window.gen_hand = gen_hand;
+      window.on_button_hit = on_button_hit;
+      window.on_button_stand = on_button_stand;
+      window.on_button_double = on_button_double;
+      window.on_button_split = on_button_split;
+      document.addEventListener("keydown", key => {
+        if (key.key == "h" || key.key == "H") {
+          on_button_hit();  
+        } else if (key.key == "s" || key.key == "S") {
+          on_button_stand();  
+        } else if (key.key == "d" || key.key == "D") {
+          on_button_double();  
+        } else if (key.key == "p" || key.key == "P") {
+          on_button_split();  
+        }
+      });
     </script>
     <div id=content>
     <div id=player_label>Player:</div><div class=card id=player_cards></div>
     <div id=dealer_label>Dealer:</div><div class=card id=dealer_cards></div>
     <div id=buttons>
       <input type="button" value="Hit"
-          onClick='player_cards.textContent = gen_hand(); dealer_cards.textContent = gen_card()' />
+          onClick='on_button_hit();'
+      />
       <input type="button" value="Stand"
-          onClick='player_cards.textContent = gen_hand(); dealer_cards.textContent = gen_card()' />
+          onClick='on_button_stand();'
+      />
       <input type="button" value="Double"
-          onClick='player_cards.textContent = gen_hand(); dealer_cards.textContent = gen_card()' />
+          onClick='on_button_double();'
+      />
       <input type="button" value="sPlit"
-          onClick='player_cards.textContent = gen_hand(); dealer_cards.textContent = gen_card()' />
+          onClick='on_button_split();'
+      />
     </div> <!-- buttons -->
     <div id=stats>
-    Correct: <span id=num_correct>_</span>/<span id=num_seen>_</span><br/>
-    Streak: <span id=num_streak>_</span><br/>
+    Correct: <span id=num_correct>0</span>/<span id=num_seen>0</span><br/>
+    Streak: <span id=num_streak>0</span><br/>
     </div>
+    <div id=hint>
+    </div> <!-- hint -->
+    <div id=strat>
+      <input type=button value="show/hide strategy card"
+          onClick='document.getElementById("strat_img").classList.toggle("hide");'
+      />
+      <img id="strat_img" src="strat.png" />
+    </div> <!-- strat -->
     </div> <!-- content -->
   </body>
 <html>
