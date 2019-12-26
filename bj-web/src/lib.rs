@@ -1,18 +1,33 @@
 use bj_core::deck::{Card, Deck, Rank, Suit};
 use bj_core::hand::Hand;
+use bj_core::playstats::PlayStats;
 use bj_core::table::{resps_from_buf, Resp, Table};
 use console_error_panic_hook;
 use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::HtmlElement;
+use web_sys::{HtmlElement, Storage};
+
+const LS_KEY_TABLE_PLAYSTATS: &str = "bj-table-playstats";
 
 lazy_static! {
     static ref TABLE: Mutex<Table<Resp>> = Mutex::new(Table::new(resps_from_buf(T1_TXT)).unwrap());
 }
 lazy_static! {
     static ref DECK: Mutex<Deck> = Mutex::new(Deck::new_infinite());
+}
+lazy_static! {
+    static ref PLAY_STATS: Mutex<Table<PlayStats>> = {
+        if let Some(t) = ls_get(LS_KEY_TABLE_PLAYSTATS) {
+            Mutex::new(t)
+        } else {
+            let t = Table::new(std::iter::repeat(PlayStats::new()).take(360)).unwrap();
+            ls_set(LS_KEY_TABLE_PLAYSTATS, &t);
+            Mutex::new(t)
+        }
+    };
 }
 
 const T1_TXT: &[u8] = b"
@@ -131,12 +146,42 @@ extern "C" {
 pub fn run() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
     output_new_hand();
+    let stat_table = PLAY_STATS.lock().unwrap();
+    output_existing_stats(&(*stat_table), 0);
     Ok(())
+}
+
+fn ls() -> Storage {
+    let win = web_sys::window().expect("should have a window in this context");
+    win.local_storage()
+        .expect("Err getting local_storage")
+        .expect("None getting local_storage")
+}
+
+fn ls_get<T>(key: &str) -> Option<T>
+where
+    for<'de> T: Deserialize<'de>,
+{
+    if let Some(val) = ls().get(key).expect("Err getting from local storage") {
+        serde_json::from_str(&val).ok()
+    } else {
+        None
+    }
+}
+
+fn ls_set<T>(key: &str, val: &T) -> ()
+where
+    T: Serialize,
+{
+    let val = serde_json::to_string(&val).unwrap();
+    ls().set(key, &val).unwrap()
 }
 
 enum Stat {
     Correct,
     Seen,
+    HandCorrect,
+    HandSeen,
     Streak,
 }
 
@@ -146,6 +191,8 @@ fn get_stat(stat: Stat) -> u32 {
     let id = match stat {
         Stat::Correct => "num_correct",
         Stat::Seen => "num_seen",
+        Stat::HandCorrect => "hand_num_correct",
+        Stat::HandSeen => "hand_num_seen",
         Stat::Streak => "num_streak",
     };
     doc.get_element_by_id(id)
@@ -163,6 +210,8 @@ fn set_stat(stat: Stat, val: u32) {
     let id = match stat {
         Stat::Correct => "num_correct",
         Stat::Seen => "num_seen",
+        Stat::HandCorrect => "hand_num_correct",
+        Stat::HandSeen => "hand_num_seen",
         Stat::Streak => "num_streak",
     };
     doc.get_element_by_id(id)
@@ -224,28 +273,55 @@ fn existing_cards(is_player: bool) -> Vec<Card> {
         .collect()
 }
 
-fn handle_button(resp: Resp) {
-    //log(&format!("got a {}", resp));
+fn existing_hand() -> (Hand, Card) {
     let player_cards = existing_cards(true);
     let dealer_cards = existing_cards(false);
-    //log(&format!("player had {:?}", player_cards));
-    //log(&format!("dealer had {:?}", dealer_cards));
     assert_eq!(player_cards.len(), 2);
     assert_eq!(dealer_cards.len(), 1);
     let player = Hand::new(&player_cards);
     let dealer = dealer_cards[0];
-    let table = TABLE.lock().unwrap();
-    let correct = table.get(&player, dealer).unwrap();
-    //log(&format!("correct is {}", correct));
-    set_hint(resp, correct, get_stat(Stat::Streak));
-    if resp == correct {
-        set_stat(Stat::Correct, get_stat(Stat::Correct) + 1);
-        set_stat(Stat::Streak, get_stat(Stat::Streak) + 1);
+    (player, dealer)
+}
+
+fn output_existing_stats(stat_table: &Table<PlayStats>, streak: u32) {
+    let (correct, seen) = stat_table
+        .values()
+        .fold((0, 0), |(acc_correct, acc_seen), stat| {
+            (acc_correct + stat.correct(), acc_seen + stat.seen())
+        });
+    set_stat(Stat::Correct, correct.into());
+    set_stat(Stat::Seen, seen.into());
+    set_stat(Stat::Streak, streak);
+    let (player, dealer) = existing_hand();
+    let stat = stat_table.get(&player, dealer).unwrap();
+    set_stat(Stat::HandCorrect, stat.correct().into());
+    set_stat(Stat::HandSeen, stat.seen().into());
+}
+
+fn update_stats(old_hand: (Hand, Card), old_was_correct: bool) {
+    let mut stat_table = PLAY_STATS.lock().unwrap();
+    let mut old_stat = stat_table.get(&old_hand.0, old_hand.1).unwrap();
+    old_stat.inc(old_was_correct);
+    stat_table
+        .update(&old_hand.0, old_hand.1, old_stat)
+        .unwrap();
+    ls_set(LS_KEY_TABLE_PLAYSTATS, &(*stat_table));
+    let new_streak = if old_was_correct {
+        get_stat(Stat::Streak) + 1
     } else {
-        set_stat(Stat::Streak, 0);
-    }
-    set_stat(Stat::Seen, get_stat(Stat::Seen) + 1);
+        0
+    };
+    output_existing_stats(&(*stat_table), new_streak);
+}
+
+fn handle_button(resp: Resp) {
+    let (old_player, old_dealer) = existing_hand();
+    let table = TABLE.lock().unwrap();
+    let correct = table.get(&old_player, old_dealer).unwrap();
+    //log(&format!("correct is {}", correct));
     output_new_hand();
+    set_hint(resp, correct, get_stat(Stat::Streak));
+    update_stats((old_player, old_dealer), resp == correct);
 }
 
 #[wasm_bindgen]
@@ -266,4 +342,14 @@ pub fn on_button_double() {
 #[wasm_bindgen]
 pub fn on_button_split() {
     handle_button(Resp::Split)
+}
+
+#[wasm_bindgen]
+pub fn on_button_clear_stats() {
+    let mut stat_table = PLAY_STATS.lock().unwrap();
+    for v in stat_table.values_mut() {
+        *v = PlayStats::new();
+    }
+    ls_set(LS_KEY_TABLE_PLAYSTATS, &(*stat_table));
+    output_existing_stats(&(*stat_table), 0);
 }
