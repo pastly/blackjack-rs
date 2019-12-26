@@ -4,6 +4,7 @@ use bj_core::deck::{Card, Deck, Rank, Suit};
 use bj_core::hand::Hand;
 use bj_core::playstats::PlayStats;
 use bj_core::table::{resps_from_buf, Resp, Table};
+use bj_core::utils::rand_next_hand;
 use console_error_panic_hook;
 use lazy_static::lazy_static;
 use localstorage::{ls_get, ls_set};
@@ -166,9 +167,8 @@ pub fn run() -> Result<(), JsValue> {
 fn output_new_hand() {
     let win = web_sys::window().expect("should have a window in this context");
     let doc = win.document().expect("window should have a document");
-    let mut deck = DECK.lock().unwrap();
-    let player = Hand::new(&[deck.draw().unwrap(), deck.draw().unwrap()]);
-    let dealer = deck.draw().unwrap();
+    let stats = PLAY_STATS.lock().unwrap();
+    let (player, dealer) = rand_next_hand(&stats);
     doc.get_element_by_id("player_cards")
         .expect("should exist player_cards")
         .dyn_ref::<HtmlElement>()
@@ -184,7 +184,7 @@ fn output_new_hand() {
 fn existing_hand() -> (Hand, Card) {
     let player_cards = existing_cards(Who::Player);
     let dealer_cards = existing_cards(Who::Dealer);
-    assert_eq!(player_cards.len(), 2);
+    assert!(player_cards.len() >= 2);
     assert_eq!(dealer_cards.len(), 1);
     let player = Hand::new(&player_cards);
     let dealer = dealer_cards[0];

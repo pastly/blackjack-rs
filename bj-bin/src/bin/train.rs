@@ -1,12 +1,11 @@
 use bj_bin::prompt;
 use bj_bin::utils::{create_if_not_exist, read_maybexz, write_maybexz};
-use bj_core::deck::{rand_suit, Card, Deck, Rank};
-use bj_core::hand::{rand_hand, Hand};
+use bj_core::deck::{Card, Deck};
+use bj_core::hand::Hand;
 use bj_core::playstats::PlayStats;
-use bj_core::table::{resps_from_buf, GameDesc, Table};
+use bj_core::table::{resps_from_buf, Table};
+use bj_core::utils::rand_next_hand;
 use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, App, Arg};
-use rand::distributions::WeightedIndex;
-use rand::prelude::*;
 use std::fmt;
 use std::fs::OpenOptions;
 use std::io::{self, BufRead, BufReader, Write};
@@ -25,34 +24,6 @@ fn print_game_stats(stats: &Table<PlayStats>) {
         num_correct as f32 / num_seen as f32 * 100.0,
         num_seen
     );
-}
-
-/// Generate a weighted-random next hand using player's statistics
-fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
-    let (hands, weights): (Vec<GameDesc>, Vec<f32>) =
-        stats.iter().map(|(tkey, s)| (tkey, s.weight())).unzip();
-    let dist = WeightedIndex::new(&weights).unwrap();
-    //println!("{:?}", weights);
-    let tkey = hands[dist.sample(&mut thread_rng())];
-    let hand = rand_hand(tkey);
-    let dealer_suit = rand_suit();
-    let card = match tkey.dealer {
-        2 => Card::new(Rank::R2, dealer_suit),
-        3 => Card::new(Rank::R3, dealer_suit),
-        4 => Card::new(Rank::R4, dealer_suit),
-        5 => Card::new(Rank::R5, dealer_suit),
-        6 => Card::new(Rank::R6, dealer_suit),
-        7 => Card::new(Rank::R7, dealer_suit),
-        8 => Card::new(Rank::R8, dealer_suit),
-        9 => Card::new(Rank::R9, dealer_suit),
-        10 => Card::new(Rank::RT, dealer_suit),
-        11 => Card::new(Rank::RA, dealer_suit),
-        _ => unreachable!(format!(
-            "It is impossible for the dealer to have a card valued at {}",
-            tkey.dealer
-        )),
-    };
-    (hand.unwrap(), card)
 }
 
 enum RandType {
