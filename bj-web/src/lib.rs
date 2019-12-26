@@ -1,16 +1,19 @@
+mod localstorage;
+
 use bj_core::deck::{Card, Deck, Rank, Suit};
 use bj_core::hand::Hand;
 use bj_core::playstats::PlayStats;
 use bj_core::table::{resps_from_buf, Resp, Table};
 use console_error_panic_hook;
 use lazy_static::lazy_static;
-use serde::{Deserialize, Serialize};
+use localstorage::{ls_get, ls_set};
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{HtmlElement, Storage};
+use web_sys::HtmlElement;
 
 const LS_KEY_TABLE_PLAYSTATS: &str = "bj-table-playstats";
+const LS_KEY_STREAK: &str = "bj-streak";
 
 lazy_static! {
     static ref TABLE: Mutex<Table<Resp>> = Mutex::new(Table::new(resps_from_buf(T1_TXT)).unwrap());
@@ -26,6 +29,14 @@ lazy_static! {
             let t = Table::new(std::iter::repeat(PlayStats::new()).take(360)).unwrap();
             ls_set(LS_KEY_TABLE_PLAYSTATS, &t);
             Mutex::new(t)
+        }
+    };
+    static ref STREAK: Mutex<u32> = {
+        if let Some(v) = ls_get(LS_KEY_STREAK) {
+            Mutex::new(v)
+        } else {
+            ls_set(LS_KEY_STREAK, &0);
+            Mutex::new(0)
         }
     };
 }
@@ -147,100 +158,15 @@ pub fn run() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
     output_new_hand();
     let stat_table = PLAY_STATS.lock().unwrap();
-    output_existing_stats(&(*stat_table), 0);
+    let streak = STREAK.lock().unwrap();
+    output_existing_stats(&(*stat_table), *streak);
     Ok(())
-}
-
-fn ls() -> Storage {
-    let win = web_sys::window().expect("should have a window in this context");
-    win.local_storage()
-        .expect("Err getting local_storage")
-        .expect("None getting local_storage")
-}
-
-fn ls_get<T>(key: &str) -> Option<T>
-where
-    for<'de> T: Deserialize<'de>,
-{
-    if let Some(val) = ls().get(key).expect("Err getting from local storage") {
-        serde_json::from_str(&val).ok()
-    } else {
-        None
-    }
-}
-
-fn ls_set<T>(key: &str, val: &T) -> ()
-where
-    T: Serialize,
-{
-    let val = serde_json::to_string(&val).unwrap();
-    ls().set(key, &val).unwrap()
-}
-
-enum Stat {
-    Correct,
-    Seen,
-    HandCorrect,
-    HandSeen,
-    Streak,
-}
-
-fn get_stat(stat: Stat) -> u32 {
-    let win = web_sys::window().expect("should have a window in this context");
-    let doc = win.document().expect("window should have a document");
-    let id = match stat {
-        Stat::Correct => "num_correct",
-        Stat::Seen => "num_seen",
-        Stat::HandCorrect => "hand_num_correct",
-        Stat::HandSeen => "hand_num_seen",
-        Stat::Streak => "num_streak",
-    };
-    doc.get_element_by_id(id)
-        .expect("should exist stat")
-        .dyn_ref::<HtmlElement>()
-        .expect("stat should be HtmlElement")
-        .inner_text()
-        .parse::<u32>()
-        .unwrap()
-}
-
-fn set_stat(stat: Stat, val: u32) {
-    let win = web_sys::window().expect("should have a window in this context");
-    let doc = win.document().expect("window should have a document");
-    let id = match stat {
-        Stat::Correct => "num_correct",
-        Stat::Seen => "num_seen",
-        Stat::HandCorrect => "hand_num_correct",
-        Stat::HandSeen => "hand_num_seen",
-        Stat::Streak => "num_streak",
-    };
-    doc.get_element_by_id(id)
-        .expect("should exist stat")
-        .dyn_ref::<HtmlElement>()
-        .expect("stat should be HtmlElement")
-        .set_inner_text(&val.to_string())
-}
-
-fn set_hint(given: Resp, correct: Resp, streak: u32) {
-    let win = web_sys::window().expect("should have a window in this context");
-    let doc = win.document().expect("window should have a document");
-    let s = if given == correct {
-        format!("{} correct", given)
-    } else {
-        format!("{} wrong. Should {}. Streak was {}", given, correct, streak)
-    };
-    doc.get_element_by_id("hint")
-        .expect("should exist hint")
-        .dyn_ref::<HtmlElement>()
-        .expect("hint should be HtmlElement")
-        .set_inner_text(&s)
 }
 
 fn output_new_hand() {
     let win = web_sys::window().expect("should have a window in this context");
     let doc = win.document().expect("window should have a document");
     let mut deck = DECK.lock().unwrap();
-    //let table = TABLE.lock().unwrap();
     let player = Hand::new(&[deck.draw().unwrap(), deck.draw().unwrap()]);
     let dealer = deck.draw().unwrap();
     doc.get_element_by_id("player_cards")
@@ -255,32 +181,36 @@ fn output_new_hand() {
         .set_inner_text(&format!("{}", card_char(dealer)));
 }
 
-fn existing_cards(is_player: bool) -> Vec<Card> {
-    let win = web_sys::window().expect("should have a window in this context");
-    let doc = win.document().expect("window should have a document");
-    let id = if is_player {
-        "player_cards"
-    } else {
-        "dealer_cards"
-    };
-    doc.get_element_by_id(id)
-        .expect("should exist player_cards/dealer_cards")
-        .dyn_ref::<HtmlElement>()
-        .expect("player_cards/dealer_cards should be HtmlElement")
-        .inner_text()
-        .chars()
-        .map(|c| char_card(c).unwrap())
-        .collect()
-}
-
 fn existing_hand() -> (Hand, Card) {
-    let player_cards = existing_cards(true);
-    let dealer_cards = existing_cards(false);
+    let player_cards = existing_cards(Who::Player);
+    let dealer_cards = existing_cards(Who::Dealer);
     assert_eq!(player_cards.len(), 2);
     assert_eq!(dealer_cards.len(), 1);
     let player = Hand::new(&player_cards);
     let dealer = dealer_cards[0];
-    (player, dealer)
+    return (player, dealer);
+
+    enum Who {
+        Player,
+        Dealer,
+    }
+
+    fn existing_cards(who: Who) -> Vec<Card> {
+        let win = web_sys::window().expect("should have a window in this context");
+        let doc = win.document().expect("window should have a document");
+        let id = match who {
+            Who::Player => "player_cards",
+            Who::Dealer => "dealer_cards",
+        };
+        doc.get_element_by_id(id)
+            .expect("should exist player_cards/dealer_cards")
+            .dyn_ref::<HtmlElement>()
+            .expect("player_cards/dealer_cards should be HtmlElement")
+            .inner_text()
+            .chars()
+            .map(|c| char_card(c).unwrap())
+            .collect()
+    }
 }
 
 fn output_existing_stats(stat_table: &Table<PlayStats>, streak: u32) {
@@ -296,22 +226,45 @@ fn output_existing_stats(stat_table: &Table<PlayStats>, streak: u32) {
     let stat = stat_table.get(&player, dealer).unwrap();
     set_stat(Stat::HandCorrect, stat.correct().into());
     set_stat(Stat::HandSeen, stat.seen().into());
+
+    enum Stat {
+        Correct,
+        Seen,
+        HandCorrect,
+        HandSeen,
+        Streak,
+    }
+
+    fn set_stat(stat: Stat, val: u32) {
+        let win = web_sys::window().expect("should have a window in this context");
+        let doc = win.document().expect("window should have a document");
+        let id = match stat {
+            Stat::Correct => "num_correct",
+            Stat::Seen => "num_seen",
+            Stat::HandCorrect => "hand_num_correct",
+            Stat::HandSeen => "hand_num_seen",
+            Stat::Streak => "num_streak",
+        };
+        doc.get_element_by_id(id)
+            .expect("should exist stat")
+            .dyn_ref::<HtmlElement>()
+            .expect("stat should be HtmlElement")
+            .set_inner_text(&val.to_string())
+    }
 }
 
 fn update_stats(old_hand: (Hand, Card), old_was_correct: bool) {
     let mut stat_table = PLAY_STATS.lock().unwrap();
+    let mut streak = STREAK.lock().unwrap();
     let mut old_stat = stat_table.get(&old_hand.0, old_hand.1).unwrap();
     old_stat.inc(old_was_correct);
     stat_table
         .update(&old_hand.0, old_hand.1, old_stat)
         .unwrap();
+    *streak = if old_was_correct { *streak + 1 } else { 0 };
     ls_set(LS_KEY_TABLE_PLAYSTATS, &(*stat_table));
-    let new_streak = if old_was_correct {
-        get_stat(Stat::Streak) + 1
-    } else {
-        0
-    };
-    output_existing_stats(&(*stat_table), new_streak);
+    ls_set(LS_KEY_STREAK, &(*streak));
+    output_existing_stats(&(*stat_table), *streak);
 }
 
 fn handle_button(resp: Resp) {
@@ -320,8 +273,23 @@ fn handle_button(resp: Resp) {
     let correct = table.get(&old_player, old_dealer).unwrap();
     //log(&format!("correct is {}", correct));
     output_new_hand();
-    set_hint(resp, correct, get_stat(Stat::Streak));
+    set_hint(resp, correct, *STREAK.lock().unwrap());
     update_stats((old_player, old_dealer), resp == correct);
+
+    fn set_hint(given: Resp, correct: Resp, streak: u32) {
+        let win = web_sys::window().expect("should have a window in this context");
+        let doc = win.document().expect("window should have a document");
+        let s = if given == correct {
+            format!("{} correct", given)
+        } else {
+            format!("{} wrong. Should {}. Streak was {}", given, correct, streak)
+        };
+        doc.get_element_by_id("hint")
+            .expect("should exist hint")
+            .dyn_ref::<HtmlElement>()
+            .expect("hint should be HtmlElement")
+            .set_inner_text(&s)
+    }
 }
 
 #[wasm_bindgen]
