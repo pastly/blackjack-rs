@@ -30,7 +30,7 @@ div {
 #strat { grid-area: strat; }
 
 .card {
-	font-size: 250%;
+	font-size: 450%;
 }
 
 .hide {
@@ -41,7 +41,7 @@ div {
 	#content {
 		max-width: 1020px;
 	}
-	body {
+	body, input {
 		font-size: 2em;
 	}
 }
