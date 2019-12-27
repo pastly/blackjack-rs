@@ -44,4 +44,7 @@ div {
 	body, input {
 		font-size: 2em;
 	}
+	.card {
+		font-size: 800%;
+	}
 }
