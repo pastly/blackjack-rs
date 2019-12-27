@@ -4,7 +4,7 @@ body {
 }
 
 div {
-	border: 3px solid green;
+	/* border: 3px solid green; */
 }
 
 #content {
@@ -37,9 +37,27 @@ div {
 	display: none;
 }
 
+#buttons {
+	text-align: justify;
+	text-justify: distribute-all-lines;
+	margin-left: auto;
+	margin-right: auto;
+}
+
 @media screen and (max-width: 1020px) {
 	#content {
 		max-width: 1020px;
+		grid-template-columns: auto;
+		grid-template-rows: auto auto auto auto auto auto auto auto;
+		grid-template-areas:
+			"player_label"
+			"player_cards"
+			"dealer_label"
+			"dealer_cards"
+			"buttons     "
+			"stats       "
+			"hint        "
+			"strat       ";
 	}
 	body, input {
 		font-size: 2em;
