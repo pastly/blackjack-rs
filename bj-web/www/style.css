@@ -11,7 +11,7 @@ div {
 	max-width: 360px;
 	margin: 0 auto;
 	display: grid;
-	grid-template-columns: auto auto;
+	grid-template-columns: 1fr 4fr;
 	grid-template-rows: auto auto auto auto auto auto;
 	grid-template-areas:
 		"player_label player_cards"
@@ -35,4 +35,13 @@ div {
 
 .hide {
 	display: none;
+}
+
+@media screen and (max-width: 1020px) {
+	#content {
+		max-width: 1020px;
+	}
+	body {
+		font-size: 2em;
+	}
 }
