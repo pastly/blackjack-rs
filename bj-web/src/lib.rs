@@ -273,16 +273,24 @@ fn handle_button(resp: Resp) {
     let correct = table.get(&old_player, old_dealer).unwrap();
     //log(&format!("correct is {}", correct));
     output_new_hand();
-    set_hint(resp, correct, *STREAK.lock().unwrap());
+    set_hint(
+        resp,
+        correct,
+        (&old_player, old_dealer),
+        *STREAK.lock().unwrap(),
+    );
     update_stats((old_player, old_dealer), resp == correct);
 
-    fn set_hint(given: Resp, correct: Resp, streak: u32) {
+    fn set_hint(given: Resp, correct: Resp, hand: (&Hand, Card), streak: u32) {
         let win = web_sys::window().expect("should have a window in this context");
         let doc = win.document().expect("window should have a document");
         let s = if given == correct {
             format!("{} correct", given)
         } else {
-            format!("{} wrong. Should {}. Streak was {}", given, correct, streak)
+            format!(
+                "{} wrong. Should {} {} vs {}. Streak was {}",
+                given, correct, hand.0, hand.1, streak
+            )
         };
         doc.get_element_by_id("hint")
             .expect("should exist hint")
