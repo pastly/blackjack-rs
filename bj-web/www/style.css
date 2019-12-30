@@ -38,10 +38,13 @@ div {
 }
 
 #buttons {
-	text-align: justify;
-	text-justify: distribute-all-lines;
-	margin-left: auto;
-	margin-right: auto;
+	display: grid;
+	grid-template-columns: auto auto auto auto;
+	grid-template-rows: auto;
+}
+
+#buttons input {
+	margin: 0.1em;
 }
 
 @media screen and (max-width: 1020px) {
