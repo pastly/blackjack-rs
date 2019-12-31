@@ -435,7 +435,7 @@ where
     ///
     /// Takes arrays for the hard, soft, and pair subtables, checks they are the correct length,
     /// assumes they have all the right keys in their key/value pairs, and builds the Table.
-    fn from_raw_parts(v: Vec<(GameDesc, T)>) -> Result<Self, TableError> {
+    fn from_single_vec(v: Vec<(GameDesc, T)>) -> Result<Self, TableError> {
         assert_eq!(v.len(), NUM_CELLS);
         let mut d = HashMap::with_capacity(NUM_CELLS);
         for kv in v.into_iter() {
@@ -451,6 +451,37 @@ where
         }
     }
 
+    /// Consume the Table and split it into sorted vectors of the hard, soft, and pair subtables.
+    pub fn into_values_sorted(self) -> (Vec<T>, Vec<T>, Vec<T>) {
+        let mut resps = Vec::with_capacity(NUM_CELLS);
+        // Safety: okay to set len <= capacity. Rest of function will fill in each item in this vec
+        // such that it is valid
+        unsafe {
+            resps.set_len(NUM_CELLS);
+        }
+        for (desc, resp) in self.into_iter() {
+            let start = match desc.hand {
+                HandType::Hard => 0,
+                HandType::Soft => HARD_CELLS,
+                HandType::Pair => HARD_CELLS + SOFT_CELLS,
+            };
+            const WIDTH: usize = 10;
+            let col = usize::from(desc.dealer - 2);
+            let row: usize = match desc.hand {
+                HandType::Hard => usize::from(desc.player - 5),
+                HandType::Soft => usize::from(desc.player - 13),
+                HandType::Pair => usize::from(desc.player / 2 - 2),
+            };
+            let idx = start + row * WIDTH + col;
+            assert!(idx < NUM_CELLS);
+            std::mem::replace(&mut resps[idx], resp);
+        }
+        let mut hards = resps;
+        let mut softs = hards.split_off(HARD_CELLS);
+        let pairs = softs.split_off(SOFT_CELLS);
+        (hards, softs, pairs)
+    }
+
     pub fn values(&self) -> impl Iterator<Item = &T> {
         self.0.values()
     }
@@ -461,6 +492,18 @@ where
 
     pub fn iter(&self) -> impl Iterator<Item = (&GameDesc, &T)> {
         self.0.iter()
+    }
+}
+
+impl<T> IntoIterator for Table<T>
+where
+    T: PartialEq + Copy,
+{
+    type Item = (GameDesc, T);
+    type IntoIter = std::collections::hash_map::IntoIter<GameDesc, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 
@@ -505,8 +548,8 @@ where
     {
         let v: Vec<(GameDesc, T)> = Vec::deserialize(deserializer)?;
         assert_eq!(v.len(), NUM_CELLS);
-        //Ok(Self::from_raw_parts(hard, soft, pair))
-        Self::from_raw_parts(v).map_err(serde::de::Error::custom)
+        //Ok(Self::from_single_vec(hard, soft, pair))
+        Self::from_single_vec(v).map_err(serde::de::Error::custom)
     }
 }
 
@@ -813,20 +856,20 @@ PPPPPPPPPP
     }
 
     #[test]
-    fn from_raw_parts_missing_keys() {
-        // sending Vecs with missing keys to Table::from_raw_parts() causes it to fail to build a
+    fn from_single_vec_missing_keys() {
+        // sending Vecs with missing keys to Table::from_single_vec() causes it to fail to build a
         // Table
         let h = vec![(GameDesc::new(HandType::Hard, 0, 0), 0); HARD_CELLS].into_iter();
         let s = vec![(GameDesc::new(HandType::Soft, 0, 0), 0); SOFT_CELLS].into_iter();
         let p = vec![(GameDesc::new(HandType::Pair, 0, 0), 0); PAIR_CELLS].into_iter();
         let v: Vec<(GameDesc, u8)> = h.chain(s).chain(p).collect();
-        if let Err(e) = Table::from_raw_parts(v) {
+        if let Err(e) = Table::from_single_vec(v) {
             match e {
                 TableError::MissingKeys(_) => {}
                 _ => panic!(format!("Got the wrong type of error: {}", e)),
             }
         } else {
-            panic!("Should have failed Table::from_raw_parts()");
+            panic!("Should have failed Table::from_single_vec()");
         }
     }
 
