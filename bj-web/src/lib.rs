@@ -7,7 +7,7 @@ use bj_core::table::{resps_from_buf, Resp, Table};
 use bj_core::utils::rand_next_hand;
 use console_error_panic_hook;
 use lazy_static::lazy_static;
-use localstorage::{ls_get, ls_set};
+use localstorage::{ls_get, ls_set, LSVal};
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -30,14 +30,6 @@ lazy_static! {
             let t = Table::new(std::iter::repeat(PlayStats::new()).take(360)).unwrap();
             ls_set(LS_KEY_TABLE_PLAYSTATS, &t);
             Mutex::new(t)
-        }
-    };
-    static ref STREAK: Mutex<u32> = {
-        if let Some(v) = ls_get(LS_KEY_STREAK) {
-            Mutex::new(v)
-        } else {
-            ls_set(LS_KEY_STREAK, &0);
-            Mutex::new(0)
         }
     };
 }
@@ -159,7 +151,7 @@ pub fn run() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
     output_new_hand();
     let stat_table = PLAY_STATS.lock().unwrap();
-    let streak = STREAK.lock().unwrap();
+    let streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
     output_existing_stats(&(*stat_table), *streak);
     Ok(())
 }
@@ -255,7 +247,7 @@ fn output_existing_stats(stat_table: &Table<PlayStats>, streak: u32) {
 
 fn update_stats(old_hand: (Hand, Card), old_was_correct: bool) {
     let mut stat_table = PLAY_STATS.lock().unwrap();
-    let mut streak = STREAK.lock().unwrap();
+    let mut streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
     let mut old_stat = stat_table.get(&old_hand.0, old_hand.1).unwrap();
     old_stat.inc(old_was_correct);
     stat_table
@@ -263,7 +255,6 @@ fn update_stats(old_hand: (Hand, Card), old_was_correct: bool) {
         .unwrap();
     *streak = if old_was_correct { *streak + 1 } else { 0 };
     ls_set(LS_KEY_TABLE_PLAYSTATS, &(*stat_table));
-    ls_set(LS_KEY_STREAK, &(*streak));
     output_existing_stats(&(*stat_table), *streak);
 }
 
@@ -277,7 +268,7 @@ fn handle_button(resp: Resp) {
         resp,
         correct,
         (&old_player, old_dealer),
-        *STREAK.lock().unwrap(),
+        *LSVal::from_ls_or_default(LS_KEY_STREAK, 0),
     );
     update_stats((old_player, old_dealer), resp == correct);
 
@@ -323,12 +314,11 @@ pub fn on_button_split() {
 #[wasm_bindgen]
 pub fn on_button_clear_stats() {
     let mut stat_table = PLAY_STATS.lock().unwrap();
-    let mut streak = STREAK.lock().unwrap();
+    let mut streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
     for v in stat_table.values_mut() {
         *v = PlayStats::new();
     }
     *streak = 0;
     ls_set(LS_KEY_TABLE_PLAYSTATS, &(*stat_table));
-    ls_set(LS_KEY_STREAK, &(*streak));
     output_existing_stats(&(*stat_table), *streak);
 }

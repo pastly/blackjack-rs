@@ -1,6 +1,71 @@
 use serde::{Deserialize, Serialize};
 use web_sys::Storage;
 
+pub struct LSVal<T>
+where
+    T: Serialize,
+{
+    key: String,
+    val: T,
+}
+
+impl<T> LSVal<T>
+where
+    T: Serialize,
+    for<'de> T: Deserialize<'de>,
+{
+    pub fn from_ls_or_default(key: &str, def: T) -> Self {
+        match ls_get(key) {
+            None => {
+                ls_set(key, &def);
+                Self {
+                    key: key.to_owned(),
+                    val: def,
+                }
+            }
+            Some(v) => Self {
+                key: key.to_owned(),
+                val: v,
+            },
+        }
+    }
+
+    pub fn from_ls(key: &str) -> Self {
+        Self {
+            key: key.to_owned(),
+            val: ls_get(key).unwrap(),
+        }
+    }
+}
+
+impl<T> std::ops::Deref for LSVal<T>
+where
+    T: Serialize,
+{
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.val
+    }
+}
+
+impl<T> std::ops::DerefMut for LSVal<T>
+where
+    T: Serialize,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.val
+    }
+}
+
+impl<T> std::ops::Drop for LSVal<T>
+where
+    T: Serialize,
+{
+    fn drop(&mut self) {
+        ls_set(&self.key, &self.val);
+    }
+}
+
 fn ls() -> Storage {
     let win = web_sys::window().expect("should have a window in this context");
     win.local_storage()
