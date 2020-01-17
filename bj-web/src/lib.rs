@@ -7,7 +7,7 @@ use bj_core::table::{resps_from_buf, Resp, Table};
 use bj_core::utils::rand_next_hand;
 use console_error_panic_hook;
 use lazy_static::lazy_static;
-use localstorage::{ls_get, ls_set, LSVal};
+use localstorage::LSVal;
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -21,17 +21,6 @@ lazy_static! {
 }
 lazy_static! {
     static ref DECK: Mutex<Deck> = Mutex::new(Deck::new_infinite());
-}
-lazy_static! {
-    static ref PLAY_STATS: Mutex<Table<PlayStats>> = {
-        if let Some(t) = ls_get(LS_KEY_TABLE_PLAYSTATS) {
-            Mutex::new(t)
-        } else {
-            let t = Table::new(std::iter::repeat(PlayStats::new()).take(360)).unwrap();
-            ls_set(LS_KEY_TABLE_PLAYSTATS, &t);
-            Mutex::new(t)
-        }
-    };
 }
 
 const T1_TXT: &[u8] = b"
@@ -82,6 +71,10 @@ PPPPPSPPSS
 SSSSSSSSSS
 PPPPPPPPPP
 ";
+
+fn new_play_stats() -> Table<PlayStats> {
+    Table::new(std::iter::repeat(PlayStats::new()).take(360)).unwrap()
+}
 
 fn card_char(card: Card) -> char {
     // https://en.wikipedia.org/wiki/Playing_cards_in_Unicode#Block
@@ -150,7 +143,7 @@ extern "C" {
 pub fn run() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
     output_new_hand();
-    let stat_table = PLAY_STATS.lock().unwrap();
+    let stat_table = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
     let streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
     output_existing_stats(&(*stat_table), *streak);
     Ok(())
@@ -159,7 +152,7 @@ pub fn run() -> Result<(), JsValue> {
 fn output_new_hand() {
     let win = web_sys::window().expect("should have a window in this context");
     let doc = win.document().expect("window should have a document");
-    let stats = PLAY_STATS.lock().unwrap();
+    let stats = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
     let (player, dealer) = rand_next_hand(&stats);
     doc.get_element_by_id("player_cards")
         .expect("should exist player_cards")
@@ -246,7 +239,7 @@ fn output_existing_stats(stat_table: &Table<PlayStats>, streak: u32) {
 }
 
 fn update_stats(old_hand: (Hand, Card), old_was_correct: bool) {
-    let mut stat_table = PLAY_STATS.lock().unwrap();
+    let mut stat_table = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
     let mut streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
     let mut old_stat = stat_table.get(&old_hand.0, old_hand.1).unwrap();
     old_stat.inc(old_was_correct);
@@ -254,7 +247,6 @@ fn update_stats(old_hand: (Hand, Card), old_was_correct: bool) {
         .update(&old_hand.0, old_hand.1, old_stat)
         .unwrap();
     *streak = if old_was_correct { *streak + 1 } else { 0 };
-    ls_set(LS_KEY_TABLE_PLAYSTATS, &(*stat_table));
     output_existing_stats(&(*stat_table), *streak);
 }
 
@@ -313,12 +305,11 @@ pub fn on_button_split() {
 
 #[wasm_bindgen]
 pub fn on_button_clear_stats() {
-    let mut stat_table = PLAY_STATS.lock().unwrap();
+    let mut stat_table = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
     let mut streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
     for v in stat_table.values_mut() {
         *v = PlayStats::new();
     }
     *streak = 0;
-    ls_set(LS_KEY_TABLE_PLAYSTATS, &(*stat_table));
     output_existing_stats(&(*stat_table), *streak);
 }

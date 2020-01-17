@@ -73,7 +73,7 @@ fn ls() -> Storage {
         .expect("None getting local_storage")
 }
 
-pub fn ls_get<T>(key: &str) -> Option<T>
+fn ls_get<T>(key: &str) -> Option<T>
 where
     for<'de> T: Deserialize<'de>,
 {
@@ -84,7 +84,7 @@ where
     }
 }
 
-pub fn ls_set<T>(key: &str, val: &T) -> ()
+fn ls_set<T>(key: &str, val: &T) -> ()
 where
     T: Serialize,
 {
