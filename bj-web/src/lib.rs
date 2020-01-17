@@ -323,9 +323,12 @@ pub fn on_button_split() {
 #[wasm_bindgen]
 pub fn on_button_clear_stats() {
     let mut stat_table = PLAY_STATS.lock().unwrap();
+    let mut streak = STREAK.lock().unwrap();
     for v in stat_table.values_mut() {
         *v = PlayStats::new();
     }
+    *streak = 0;
     ls_set(LS_KEY_TABLE_PLAYSTATS, &(*stat_table));
-    output_existing_stats(&(*stat_table), 0);
+    ls_set(LS_KEY_STREAK, &(*streak));
+    output_existing_stats(&(*stat_table), *streak);
 }
