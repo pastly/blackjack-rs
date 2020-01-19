@@ -89,7 +89,10 @@ Source: <a href='https://wizardofodds.com'>wizardofodds.com</a><br/>
         }
     }
 
-    pub fn render_css(mut fd: impl Write, options: Option<HTMLTableRendererCSSOptions>) -> io::Result<()> {
+    pub fn render_css(
+        mut fd: impl Write,
+        options: Option<HTMLTableRendererCSSOptions>,
+    ) -> io::Result<()> {
         let options = if options.is_none() {
             std::default::Default::default()
         } else {
@@ -117,12 +120,12 @@ a {{ color: inherit; }}
 }}
 </style>
 ",
-            col_table_outer_text=options.col_table_outer_text,
-            col_table_inner_text=options.col_table_inner_text,
-            col_hit=options.col_hit,
-            col_stand=options.col_stand,
-            col_double=options.col_double,
-            col_split=options.col_split,
+            col_table_outer_text = options.col_table_outer_text,
+            col_table_inner_text = options.col_table_inner_text,
+            col_hit = options.col_hit,
+            col_stand = options.col_stand,
+            col_double = options.col_double,
+            col_split = options.col_split,
         )
     }
 }
