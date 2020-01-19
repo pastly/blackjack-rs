@@ -3,6 +3,7 @@ mod localstorage;
 use bj_core::deck::{Card, Deck, Rank, Suit};
 use bj_core::hand::Hand;
 use bj_core::playstats::PlayStats;
+use bj_core::rendertable::{HTMLTableRenderer, TableRenderer};
 use bj_core::table::{resps_from_buf, Resp, Table};
 use bj_core::utils::rand_next_hand;
 use console_error_panic_hook;
@@ -146,7 +147,21 @@ pub fn run() -> Result<(), JsValue> {
     let stat_table = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
     let streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
     output_existing_stats(&(*stat_table), *streak);
+    output_resp_table();
     Ok(())
+}
+
+fn output_resp_table() {
+    let t = Table::new(resps_from_buf(T1_TXT)).unwrap();
+    let mut fd: Vec<u8> = vec![];
+    HTMLTableRenderer::render(&mut fd, t).unwrap();
+    let win = web_sys::window().expect("should have a window in this context");
+    let doc = win.document().expect("window should have a document");
+    doc.get_element_by_id("strat_html")
+        .expect("should exist strat_html")
+        .dyn_ref::<HtmlElement>()
+        .expect("strat_html should be HtmlElement")
+        .set_inner_html(&String::from_utf8(fd).unwrap());
 }
 
 fn output_new_hand() {

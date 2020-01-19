@@ -84,7 +84,7 @@ where
     }
 }
 
-fn ls_set<T>(key: &str, val: &T) -> ()
+fn ls_set<T>(key: &str, val: &T)
 where
     T: Serialize,
 {
