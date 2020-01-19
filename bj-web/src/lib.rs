@@ -155,6 +155,7 @@ fn output_resp_table() {
     let t = Table::new(resps_from_buf(T1_TXT)).unwrap();
     let mut fd: Vec<u8> = vec![];
     HTMLTableRenderer::render(&mut fd, t).unwrap();
+    HTMLTableRenderer::render_css(&mut fd, None).unwrap();
     let win = web_sys::window().expect("should have a window in this context");
     let doc = win.document().expect("window should have a document");
     doc.get_element_by_id("strat_html")

@@ -5,36 +5,44 @@ pub trait TableRenderer {
     fn render(fd: impl Write, table: Table<Resp>) -> io::Result<()>;
 }
 
+pub struct HTMLTableRendererCSSOptions {
+    col_table_outer_text: String,
+    col_table_inner_text: String,
+    col_hit: String,
+    col_stand: String,
+    col_double: String,
+    col_split: String,
+}
+
+impl std::default::Default for HTMLTableRendererCSSOptions {
+    fn default() -> Self {
+        Self {
+            col_table_outer_text: "#ddd".to_owned(),
+            col_table_inner_text: "#333".to_owned(),
+            col_hit: "#ff3333".to_owned(),
+            col_stand: "#ffff00".to_owned(),
+            col_double: "#6666ff".to_owned(),
+            col_split: "#00ff00".to_owned(),
+        }
+    }
+}
+
 pub struct HTMLTableRenderer;
 
 impl HTMLTableRenderer {
-    fn header(mut fd: impl Write) -> io::Result<()> {
-        writeln!(
-            fd,
-            "
-<style>
-.hit, .stand, .double, .split {{
-    width:  1.5em;
-    height: 1.5em;
-    text-align: center;
-}}
-.hit    {{ background-color: #ff3333; }}
-.stand  {{ background-color: #ffff00; }}
-.double {{ background-color: #6666ff; }}
-.split  {{ background-color: #00ff00; }}
-</style>
-"
-        )
+    fn header(mut _fd: impl Write) -> io::Result<()> {
+        Ok(())
     }
 
     fn footer(mut fd: impl Write) -> io::Result<()> {
         writeln!(
             fd,
             "
-<span class=hit>H</span>Hit<br/>
-<span class=stand>S</span>Stand<br/>
-<span class=double>D</span>Double<br/>
-<span class=split>P</span>Split<br/>
+<span class=strat_card_hit>H</span>&nbsp;Hit<br/>
+<span class=strat_card_stand>S</span>&nbsp;Stand<br/>
+<span class=strat_card_double>D</span>&nbsp;Double<br/>
+<span class=strat_card_split>P</span>&nbsp;Split<br/>
+Source: <a href='https://wizardofodds.com'>wizardofodds.com</a><br/>
 "
         )
     }
@@ -60,10 +68,10 @@ impl HTMLTableRenderer {
                 player_hand_val += 1;
             }
             let (class, label) = match resp {
-                Resp::Hit => ("hit", "H"),
-                Resp::Stand => ("stand", "S"),
-                Resp::Double => ("double", "D"),
-                Resp::Split => ("split", "P"),
+                Resp::Hit => ("strat_card_hit", "H"),
+                Resp::Stand => ("strat_card_stand", "S"),
+                Resp::Double => ("strat_card_double", "D"),
+                Resp::Split => ("strat_card_split", "P"),
             };
             writeln!(fd, "<td class={}>{}</td>", class, label)?;
             if i % 10 == 9 {
@@ -79,6 +87,43 @@ impl HTMLTableRenderer {
                 v => v.to_string(),
             }
         }
+    }
+
+    pub fn render_css(mut fd: impl Write, options: Option<HTMLTableRendererCSSOptions>) -> io::Result<()> {
+        let options = if options.is_none() {
+            std::default::Default::default()
+        } else {
+            options.unwrap()
+        };
+        writeln!(
+            fd,
+            "
+<style>
+.strat_card_hit, .strat_card_stand, .strat_card_double, .strat_card_split {{
+    width:  1.5em;
+    height: 1.5em;
+    text-align: center;
+}}
+.strat_card_hit    {{ background-color: {col_hit}; }}
+.strat_card_stand  {{ background-color: {col_stand}; }}
+.strat_card_double {{ background-color: {col_double}; }}
+.strat_card_split  {{ background-color: {col_split}; }}
+a {{ color: inherit; }}
+#strat_html table {{
+    color: {col_table_outer_text};
+}}
+#strat_html table tr td {{
+    color: {col_table_inner_text};
+}}
+</style>
+",
+            col_table_outer_text=options.col_table_outer_text,
+            col_table_inner_text=options.col_table_inner_text,
+            col_hit=options.col_hit,
+            col_stand=options.col_stand,
+            col_double=options.col_double,
+            col_split=options.col_split,
+        )
     }
 }
 
