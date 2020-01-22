@@ -13,10 +13,13 @@ impl HTMLTableRenderer {
             fd,
             "
 <style>
+#strat_html table tr td {{
+}}
 .hit, .stand, .double, .split {{
     width:  1.5em;
     height: 1.5em;
     text-align: center;
+    color: #333;
 }}
 .hit    {{ background-color: #ff3333; }}
 .stand  {{ background-color: #ffff00; }}
