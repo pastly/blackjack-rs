@@ -13,8 +13,7 @@ impl HTMLTableRenderer {
             fd,
             "
 <style>
-#strat_html table tr td {{
-}}
+#strat_source {{ color: inherit; }}
 .hit, .stand, .double, .split {{
     width:  1.5em;
     height: 1.5em;
@@ -38,6 +37,7 @@ impl HTMLTableRenderer {
 <span class=stand>S</span>&nbsp;Stand<br/>
 <span class=double>D</span>&nbsp;Double<br/>
 <span class=split>P</span>&nbsp;Split<br/>
+Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strategy/calculator/'>wizardofodds.com</a><br/>
 "
         )
     }
