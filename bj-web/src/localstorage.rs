@@ -30,12 +30,21 @@ where
         }
     }
 
-    //pub fn from_ls(key: &str) -> Self {
-    //    Self {
-    //        key: key.to_owned(),
-    //        val: ls_get(key).unwrap(),
-    //    }
-    //}
+    pub fn from_ls(key: &str) -> Option<Self> {
+        if let Some(v) = ls_get(key) {
+            Some(Self {
+                key: key.to_owned(),
+                val: v,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn swap(&mut self, mut val: T) -> T {
+        std::mem::swap(&mut self.val, &mut val);
+        val
+    }
 }
 
 impl<T> std::ops::Deref for LSVal<T>

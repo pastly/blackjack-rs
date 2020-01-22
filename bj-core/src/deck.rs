@@ -1,4 +1,5 @@
 use rand::prelude::*;
+use serde_derive::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt;
 
@@ -32,7 +33,7 @@ pub fn rand_suit() -> Suit {
     *ALL_SUITS.choose(&mut thread_rng()).unwrap()
 }
 
-#[derive(Hash, PartialEq, Eq, PartialOrd, Clone, Copy, Debug)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Suit {
     Club,
     Diamond,
@@ -51,7 +52,7 @@ impl fmt::Display for Suit {
     }
 }
 
-#[derive(Hash, PartialEq, Eq, PartialOrd, Clone, Copy, Debug)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Rank {
     R2,
     R3,
@@ -105,7 +106,7 @@ impl fmt::Display for Rank {
     }
 }
 
-#[derive(Hash, PartialEq, Eq, PartialOrd, Clone, Copy, Debug)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Card {
     suit: Suit,
     rank: Rank,

@@ -1,5 +1,5 @@
-use bj_core::table::{resps_from_buf, Table};
 use bj_core::rendertable::{HTMLTableRenderer, TableRenderer};
+use bj_core::table::{resps_from_buf, Table};
 use clap::{crate_authors, crate_name, crate_version, App, Arg};
 use std::error::Error;
 use std::fs::OpenOptions;

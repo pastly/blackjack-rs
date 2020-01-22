@@ -11,7 +11,7 @@ pub enum HandType {
     Pair,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct Hand {
     pub(crate) cards: Vec<Card>,
 }

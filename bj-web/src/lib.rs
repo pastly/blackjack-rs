@@ -16,6 +16,7 @@ use web_sys::HtmlElement;
 
 const LS_KEY_TABLE_PLAYSTATS: &str = "bj-table-playstats";
 const LS_KEY_STREAK: &str = "bj-streak";
+const LS_KEY_EXISTING_HAND: &str = "bj-hand";
 
 lazy_static! {
     static ref TABLE: Mutex<Table<Resp>> = Mutex::new(Table::new(resps_from_buf(T1_TXT)).unwrap());
@@ -107,33 +108,6 @@ fn card_char(card: Card) -> char {
     unsafe { std::char::from_u32_unchecked(val) }
 }
 
-fn char_card(ch: char) -> Option<Card> {
-    let suit = match ch as u32 {
-        0x1F0A1..=0x1F0AE => Suit::Spade,
-        0x1F0B1..=0x1F0BE => Suit::Heart,
-        0x1F0C1..=0x1F0CE => Suit::Diamond,
-        0x1F0D1..=0x1F0DE => Suit::Club,
-        _ => panic!("Cannot determine suit for card character"),
-    };
-    let rank = match ((ch as u32) - 0x1F0A0) % 16 {
-        1 => Rank::RA,
-        2 => Rank::R2,
-        3 => Rank::R3,
-        4 => Rank::R4,
-        5 => Rank::R5,
-        6 => Rank::R6,
-        7 => Rank::R7,
-        8 => Rank::R8,
-        9 => Rank::R9,
-        10 => Rank::RT,
-        11 => Rank::RJ,
-        13 => Rank::RQ,
-        14 => Rank::RK,
-        0 | 12 | 15 | _ => panic!("Cannot determine rank for card character"),
-    };
-    Some(Card::new(rank, suit))
-}
-
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
@@ -143,10 +117,13 @@ extern "C" {
 #[wasm_bindgen(start)]
 pub fn run() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
-    output_new_hand();
+    let stats = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
+    let (player_hand, dealer_card) =
+        &*LSVal::from_ls_or_default(LS_KEY_EXISTING_HAND, rand_next_hand(&stats));
     let stat_table = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
     let streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
-    output_existing_stats(&(*stat_table), *streak);
+    output_hand(player_hand, *dealer_card);
+    output_stats(&(*stat_table), *streak);
     output_resp_table();
     Ok(())
 }
@@ -164,16 +141,14 @@ fn output_resp_table() {
         .set_inner_html(&String::from_utf8(fd).unwrap());
 }
 
-fn output_new_hand() {
+fn output_hand(player: &Hand, dealer: Card) {
     let win = web_sys::window().expect("should have a window in this context");
     let doc = win.document().expect("window should have a document");
-    let stats = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
-    let (player, dealer) = rand_next_hand(&stats);
     doc.get_element_by_id("player_cards")
         .expect("should exist player_cards")
         .dyn_ref::<HtmlElement>()
         .expect("player_cards should be HtmlElement")
-        .set_inner_text(&player.into_cards().map(card_char).collect::<String>());
+        .set_inner_text(&player.cards().map(|&c| card_char(c)).collect::<String>());
     doc.get_element_by_id("dealer_cards")
         .expect("should exist dealer_cards")
         .dyn_ref::<HtmlElement>()
@@ -181,39 +156,7 @@ fn output_new_hand() {
         .set_inner_text(&format!("{}", card_char(dealer)));
 }
 
-fn existing_hand() -> (Hand, Card) {
-    let player_cards = existing_cards(Who::Player);
-    let dealer_cards = existing_cards(Who::Dealer);
-    assert!(player_cards.len() >= 2);
-    assert_eq!(dealer_cards.len(), 1);
-    let player = Hand::new(&player_cards);
-    let dealer = dealer_cards[0];
-    return (player, dealer);
-
-    enum Who {
-        Player,
-        Dealer,
-    }
-
-    fn existing_cards(who: Who) -> Vec<Card> {
-        let win = web_sys::window().expect("should have a window in this context");
-        let doc = win.document().expect("window should have a document");
-        let id = match who {
-            Who::Player => "player_cards",
-            Who::Dealer => "dealer_cards",
-        };
-        doc.get_element_by_id(id)
-            .expect("should exist player_cards/dealer_cards")
-            .dyn_ref::<HtmlElement>()
-            .expect("player_cards/dealer_cards should be HtmlElement")
-            .inner_text()
-            .chars()
-            .map(|c| char_card(c).unwrap())
-            .collect()
-    }
-}
-
-fn output_existing_stats(stat_table: &Table<PlayStats>, streak: u32) {
+fn output_stats(stat_table: &Table<PlayStats>, streak: u32) {
     let (correct, seen) = stat_table
         .values()
         .fold((0, 0), |(acc_correct, acc_seen), stat| {
@@ -222,8 +165,8 @@ fn output_existing_stats(stat_table: &Table<PlayStats>, streak: u32) {
     set_stat(Stat::Correct, correct.into());
     set_stat(Stat::Seen, seen.into());
     set_stat(Stat::Streak, streak);
-    let (player, dealer) = existing_hand();
-    let stat = stat_table.get(&player, dealer).unwrap();
+    let (player, dealer) = &*LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
+    let stat = stat_table.get(&player, *dealer).unwrap();
     set_stat(Stat::HandCorrect, stat.correct().into());
     set_stat(Stat::HandSeen, stat.seen().into());
 
@@ -253,7 +196,7 @@ fn output_existing_stats(stat_table: &Table<PlayStats>, streak: u32) {
     }
 }
 
-fn update_stats(old_hand: (Hand, Card), old_was_correct: bool) {
+fn update_stats(old_hand: (&Hand, Card), old_was_correct: bool) {
     let mut stat_table = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
     let mut streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
     let mut old_stat = stat_table.get(&old_hand.0, old_hand.1).unwrap();
@@ -262,22 +205,23 @@ fn update_stats(old_hand: (Hand, Card), old_was_correct: bool) {
         .update(&old_hand.0, old_hand.1, old_stat)
         .unwrap();
     *streak = if old_was_correct { *streak + 1 } else { 0 };
-    output_existing_stats(&(*stat_table), *streak);
+    output_stats(&(*stat_table), *streak);
 }
 
 fn handle_button(resp: Resp) {
-    let (old_player, old_dealer) = existing_hand();
     let table = TABLE.lock().unwrap();
-    let correct = table.get(&old_player, old_dealer).unwrap();
-    //log(&format!("correct is {}", correct));
-    output_new_hand();
+    let stats: LSVal<Table<PlayStats>> = LSVal::from_ls(LS_KEY_TABLE_PLAYSTATS).unwrap();
+    let mut hand: LSVal<(Hand, Card)> = LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
+    let correct = table.get(&hand.0, hand.1).unwrap();
     set_hint(
         resp,
         correct,
-        (&old_player, old_dealer),
-        *LSVal::from_ls_or_default(LS_KEY_STREAK, 0),
+        (&hand.0, hand.1),
+        *LSVal::from_ls(LS_KEY_STREAK).unwrap(),
     );
-    update_stats((old_player, old_dealer), resp == correct);
+    update_stats((&hand.0, hand.1), resp == correct);
+    let _old = hand.swap(rand_next_hand(&*stats));
+    output_hand(&(*hand).0, (*hand).1);
 
     fn set_hint(given: Resp, correct: Resp, hand: (&Hand, Card), streak: u32) {
         let win = web_sys::window().expect("should have a window in this context");
@@ -326,5 +270,5 @@ pub fn on_button_clear_stats() {
         *v = PlayStats::new();
     }
     *streak = 0;
-    output_existing_stats(&(*stat_table), *streak);
+    output_stats(&(*stat_table), *streak);
 }
