@@ -123,7 +123,7 @@ pub fn run() -> Result<(), JsValue> {
     let stat_table = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
     let streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
     output_hand(player_hand, *dealer_card);
-    output_stats(&(*stat_table), *streak);
+    output_stats((player_hand, *dealer_card), &(*stat_table), *streak);
     output_resp_table();
     Ok(())
 }
@@ -156,7 +156,7 @@ fn output_hand(player: &Hand, dealer: Card) {
         .set_inner_text(&format!("{}", card_char(dealer)));
 }
 
-fn output_stats(stat_table: &Table<PlayStats>, streak: u32) {
+fn output_stats(current_hand: (&Hand, Card), stat_table: &Table<PlayStats>, streak: u32) {
     let (correct, seen) = stat_table
         .values()
         .fold((0, 0), |(acc_correct, acc_seen), stat| {
@@ -165,8 +165,7 @@ fn output_stats(stat_table: &Table<PlayStats>, streak: u32) {
     set_stat(Stat::Correct, correct.into());
     set_stat(Stat::Seen, seen.into());
     set_stat(Stat::Streak, streak);
-    let (player, dealer) = &*LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
-    let stat = stat_table.get(&player, *dealer).unwrap();
+    let stat = stat_table.get(current_hand.0, current_hand.1).unwrap();
     set_stat(Stat::HandCorrect, stat.correct().into());
     set_stat(Stat::HandSeen, stat.seen().into());
 
@@ -205,23 +204,24 @@ fn update_stats(old_hand: (&Hand, Card), old_was_correct: bool) {
         .update(&old_hand.0, old_hand.1, old_stat)
         .unwrap();
     *streak = if old_was_correct { *streak + 1 } else { 0 };
-    output_stats(&(*stat_table), *streak);
 }
 
 fn handle_button(resp: Resp) {
     let table = TABLE.lock().unwrap();
-    let stats: LSVal<Table<PlayStats>> = LSVal::from_ls(LS_KEY_TABLE_PLAYSTATS).unwrap();
     let mut hand: LSVal<(Hand, Card)> = LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
     let correct = table.get(&hand.0, hand.1).unwrap();
+    update_stats((&hand.0, hand.1), resp == correct);
     set_hint(
         resp,
         correct,
         (&hand.0, hand.1),
         *LSVal::from_ls(LS_KEY_STREAK).unwrap(),
     );
-    update_stats((&hand.0, hand.1), resp == correct);
+    let stats: LSVal<Table<PlayStats>> = LSVal::from_ls(LS_KEY_TABLE_PLAYSTATS).unwrap();
     let _old = hand.swap(rand_next_hand(&*stats));
-    output_hand(&(*hand).0, (*hand).1);
+    output_hand(&hand.0, hand.1);
+    let streak = *LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
+    output_stats((&hand.0, hand.1), &(*stats), streak);
 
     fn set_hint(given: Resp, correct: Resp, hand: (&Hand, Card), streak: u32) {
         let win = web_sys::window().expect("should have a window in this context");
@@ -270,5 +270,6 @@ pub fn on_button_clear_stats() {
         *v = PlayStats::new();
     }
     *streak = 0;
-    output_stats(&(*stat_table), *streak);
+    let (player, dealer) = &*LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
+    output_stats((&player, *dealer), &(*stat_table), *streak);
 }
