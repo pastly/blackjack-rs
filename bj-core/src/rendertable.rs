@@ -25,6 +25,14 @@ impl HTMLTableRenderer {
 .double {{ background-color: #6666ff; }}
 .split  {{ background-color: #00ff00; }}
 </style>
+<h1>Basic Strategy</h1>
+<table>
+<tr><td>Decks</td><td>4+</td></tr>
+<tr><td>Soft 17</td><td>Dealer hits</td></tr>
+<tr><td>Double after split</td><td>Allowed</td></tr>
+<tr><td>Surrender</td><td>Not allowed</td></tr>
+<tr><td>Dealer peek</td><td>Dealer peeks for BJ</td></tr>
+</table>
 "
         )
     }
