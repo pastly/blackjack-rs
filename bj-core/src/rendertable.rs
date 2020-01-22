@@ -34,10 +34,10 @@ impl HTMLTableRenderer {
         writeln!(
             fd,
             "
-<span class=hit>H</span>Hit<br/>
-<span class=stand>S</span>Stand<br/>
-<span class=double>D</span>Double<br/>
-<span class=split>P</span>Split<br/>
+<span class=hit>H</span>&nbsp;Hit<br/>
+<span class=stand>S</span>&nbsp;Stand<br/>
+<span class=double>D</span>&nbsp;Double<br/>
+<span class=split>P</span>&nbsp;Split<br/>
 "
         )
     }
