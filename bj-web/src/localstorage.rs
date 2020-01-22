@@ -30,12 +30,12 @@ where
         }
     }
 
-    pub fn from_ls(key: &str) -> Self {
-        Self {
-            key: key.to_owned(),
-            val: ls_get(key).unwrap(),
-        }
-    }
+    //pub fn from_ls(key: &str) -> Self {
+    //    Self {
+    //        key: key.to_owned(),
+    //        val: ls_get(key).unwrap(),
+    //    }
+    //}
 }
 
 impl<T> std::ops::Deref for LSVal<T>
