@@ -1,4 +1,5 @@
 use crate::deck::{Card, Rank};
+use std::default::Default;
 const DECK_LEN: u16 = 52;
 
 pub trait CountSystem {
@@ -8,6 +9,7 @@ pub trait CountSystem {
     }
 }
 
+#[derive(Default)]
 pub struct HiLo;
 
 impl HiLo {
