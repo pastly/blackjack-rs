@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .read(true)
             // safe to unwrap because --input is required
             .open(matches.value_of("input").unwrap())?,
-    ))?;
+    )?)?;
     let mut fd = BufWriter::new(
         OpenOptions::new()
             .write(true)

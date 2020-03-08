@@ -119,7 +119,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .read(true)
             // safe to unwrap because --table is required
             .open(matches.value_of("table").unwrap())?,
-    ))?;
+    )?)?;
     // safe to unwrap bc --stats is required
     let stats_fname = matches.value_of("stats").unwrap();
     let save_stats = value_t!(matches, "statssave", StatsSaveStrat)?;

@@ -1,4 +1,4 @@
-use bj_core::table::{resp_from_char, Resp};
+use bj_core::table::Resp;
 use std::io::{self, BufRead, Write};
 
 type NumType = i32;
@@ -41,14 +41,14 @@ fn command_from_str(s: &str) -> Option<Command> {
             Some(Command::SaveQuit)
         } else if let Ok(val) = words[0].parse::<NumType>() {
             Some(Command::Num(val))
-        } else if words[0].len() == 1 {
-            if let Some(resp) = resp_from_char(words[0].chars().nth(0).unwrap()) {
-                Some(Command::Resp(resp))
-            } else {
-                None
-            }
         } else {
-            None
+            match words[0] {
+                "H" => Some(Command::Resp(Resp::Hit)),
+                "S" => Some(Command::Resp(Resp::Stand)),
+                "D" => Some(Command::Resp(Resp::Double)),
+                "P" => Some(Command::Resp(Resp::Split)),
+                _ => None
+            }
         }
     } else if words.len() == 2 {
         if words[0] == "BET" || words[0] == "B" {
