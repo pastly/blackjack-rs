@@ -19,7 +19,8 @@ const LS_KEY_STREAK: &str = "bj-streak";
 const LS_KEY_EXISTING_HAND: &str = "bj-hand";
 
 lazy_static! {
-    static ref TABLE: Mutex<Table<Resp>> = Mutex::new(Table::new(resps_from_buf(T1_TXT)).unwrap());
+    static ref TABLE: Mutex<Table<Resp>> =
+        Mutex::new(Table::new(resps_from_buf(T1_TXT).unwrap()).unwrap());
 }
 lazy_static! {
     static ref DECK: Mutex<Deck> = Mutex::new(Deck::new_infinite());
@@ -129,7 +130,7 @@ pub fn run() -> Result<(), JsValue> {
 }
 
 fn output_resp_table() {
-    let t = Table::new(resps_from_buf(T1_TXT)).unwrap();
+    let t = Table::new(resps_from_buf(T1_TXT).unwrap()).unwrap();
     let mut fd: Vec<u8> = vec![];
     HTMLTableRenderer::render(&mut fd, t).unwrap();
     let win = web_sys::window().expect("should have a window in this context");
