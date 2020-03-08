@@ -647,44 +647,44 @@ mod tests {
 # no surrender, peek for BJ
 # https://wizardofodds.com/games/blackjack/strategy/calculator/
 # hard
-HHHHHHHHHH
-HHHHHHHHHH
-HHHHHHHHHH
-HHHHHHHHHH
-HDDDDHHHHH
-DDDDDDDDHH
-DDDDDDDDDD
-HHSSSHHHHH
-SSSSSHHHHH
-SSSSSHHHHH
-SSSSSHHHHH
-SSSSSHHHHH
-SSSSSSSSSS
-SSSSSSSSSS
-SSSSSSSSSS
-SSSSSSSSSS
-SSSSSSSSSS
+H  H  H  H  H  H  H  H  H  H
+H  H  H  H  H  H  H  H  H  H
+H  H  H  H  H  H  H  H  H  H
+H  H  H  H  H  H  H  H  H  H
+H  Dh Dh Dh Dh H  H  H  H  H
+Dh Dh Dh Dh Dh Dh Dh Dh H  H
+Dh Dh Dh Dh Dh Dh Dh Dh Dh Dh
+H  H  S  S  S  H  H  H  H  H
+S  S  S  S  S  H  H  H  H  H
+S  S  S  S  S  H  H  H  H  H
+S  S  S  S  S  H  H  H  H  H
+S  S  S  S  S  H  H  H  H  H
+S  S  S  S  S  S  S  S  S  S
+S  S  S  S  S  S  S  S  S  S
+S  S  S  S  S  S  S  S  S  S
+S  S  S  S  S  S  S  S  S  S
+S  S  S  S  S  S  S  S  S  S
 # soft
-HHHDDHHHHH
-HHHDDHHHHH
-HHDDDHHHHH
-HHDDDHHHHH
-HDDDDHHHHH
-DDDDDSSHHH
-SSSSDSSSSS
-SSSSSSSSSS
-SSSSSSSSSS
+H  H  H  Dh Dh H  H  H  H  H
+H  H  H  Dh Dh H  H  H  H  H
+H  H  Dh Dh Dh H  H  H  H  H
+H  H  Dh Dh Dh H  H  H  H  H
+H  Dh Dh Dh Dh H  H  H  H  H
+Ds Ds Ds Ds Ds S  S  H  H  H
+S  S  S  S  Ds S  S  S  S  S
+S  S  S  S  S  S  S  S  S  S
+S  S  S  S  S  S  S  S  S  S
 # pair
-PPPPPPHHHH
-PPPPPPHHHH
-HHHPPHHHHH
-DDDDDDDDHH
-PPPPPHHHHH
-PPPPPPHHHH
-PPPPPPPPPP
-PPPPPSPPSS
-SSSSSSSSSS
-PPPPPPPPPP
+P  P  P  P  P  P  H  H  H  H
+P  P  P  P  P  P  H  H  H  H
+H  H  H  P  P  H  H  H  H  H
+Dh Dh Dh Dh Dh Dh Dh Dh H  H
+P  P  P  P  P  H  H  H  H  H
+P  P  P  P  P  P  H  H  H  H
+P  P  P  P  P  P  P  P  P  P
+P  P  P  P  P  S  P  P  S  S
+S  S  S  S  S  S  S  S  S  S
+P  P  P  P  P  P  P  P  P  P
     ";
 
     fn all_clubs() -> Vec<Card> {
