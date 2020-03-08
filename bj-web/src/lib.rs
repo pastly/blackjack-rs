@@ -207,21 +207,28 @@ fn update_stats(old_hand: (&Hand, Card), old_was_correct: bool) {
 }
 
 fn handle_button(resp: Resp) {
-    let table = TABLE.lock().unwrap();
+    // the (player_hand, dealer_card) currently on the screen
     let mut hand: LSVal<(Hand, Card)> = LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
-    let correct = table.get(&hand.0, hand.1).unwrap();
+    // the correct response to this (player_hand, dealer_card)
+    let correct = TABLE.lock().unwrap().get(&hand.0, hand.1).unwrap();
+    // grab a copy of what the user's existing streak is. If they get the hand wrong, we will want
+    // to display this to them and we will soon be clearing out the localstorage copy of their
+    // streak
+    let old_streak = *LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
+    // update localstorage state for player statistics
     update_stats((&hand.0, hand.1), resp == correct);
-    set_hint(
-        resp,
-        correct,
-        (&hand.0, hand.1),
-        *LSVal::from_ls(LS_KEY_STREAK).unwrap(),
-    );
+    // display the "hint": player got it right, or they got it wrong and ___ is correct and ___ was
+    // their streak
+    set_hint(resp, correct, (&hand.0, hand.1), old_streak);
+    // get a LSVal-wrapped ref to their stats so that we can (1) generate an appropriate next hand
+    // for them and (2) tell them what their stats are for the new hand
     let stats: LSVal<Table<PlayStats>> = LSVal::from_ls(LS_KEY_TABLE_PLAYSTATS).unwrap();
-    let _old = hand.swap(rand_next_hand(&*stats));
+    let _ = hand.swap(rand_next_hand(&*stats)); // (1)
     output_hand(&hand.0, hand.1);
-    let streak = *LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
-    output_stats((&hand.0, hand.1), &(*stats), streak);
+    // update_stats() will have either incremented their streak or reset it to zero, so we need tor
+    // refetch their streak from localstorage
+    let new_streak = *LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
+    output_stats((&hand.0, hand.1), &(*stats), new_streak); // (2)
 
     fn set_hint(given: Resp, correct: Resp, hand: (&Hand, Card), streak: u32) {
         let win = web_sys::window().expect("should have a window in this context");
