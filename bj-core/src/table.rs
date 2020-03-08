@@ -963,7 +963,7 @@ PPPPPPPPPP
     }
 
     #[test]
-    fn addaddsign_1() {
+    fn addassign_1() {
         let mut t1 = Table::new(repeat(1).take(360)).unwrap();
         let t2 = Table::new(repeat(2).take(360)).unwrap();
         t1 += t2;
@@ -973,7 +973,7 @@ PPPPPPPPPP
     }
 
     #[test]
-    fn addaddsign_2() {
+    fn addassign_2() {
         let mut t1 = Table::new(repeat(0).take(359).chain(repeat(1).take(1))).unwrap();
         let t2 = Table::new(repeat(1).take(1).chain(repeat(0).take(359))).unwrap();
         t1 += t2;
