@@ -21,10 +21,11 @@ impl HTMLTableRenderer {
     text-align: center;
     color: #333;
 }}
-.hit    {{ background-color: #ff3333; }}
-.stand  {{ background-color: #ffff00; }}
-.double {{ background-color: #6666ff; }}
-.split  {{ background-color: #00ff00; }}
+.hit       {{ background-color: #ff3333; }}
+.stand     {{ background-color: #ffff00; }}
+.double    {{ background-color: #6666ff; }}
+.split     {{ background-color: #00ff00; }}
+.surrender {{ background-color: #dddddd; }}
 </style>
 <h1>Basic Strategy</h1>
 <table>
@@ -46,6 +47,7 @@ impl HTMLTableRenderer {
 <span class=stand>S</span>&nbsp;Stand<br/>
 <span class=double>D</span>&nbsp;Double<br/>
 <span class=split>P</span>&nbsp;Split<br/>
+<span class=surrender>R</span>&nbsp;Surrender<br/>
 Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strategy/calculator/'>wizardofodds.com</a><br/>
 "
         )
