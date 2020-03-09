@@ -63,13 +63,17 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
         writeln!(fd, "<h1>{}</h1><table>", label)?;
         write!(fd, "<tr><td></td>")?;
         for i in 2..=11 {
-            let s = val_to_string(i);
+            let s = if i == 11 {
+                "A".to_string()
+            } else {
+                i.to_string()
+            };
             writeln!(fd, "<th>{}</th>", s)?;
         }
         write!(fd, "</tr><tr>")?;
         for (i, resp) in v.iter().enumerate() {
             if i % 10 == 0 {
-                let s = val_to_string(player_hand_val);
+                let s = player_hand_val.to_string();
                 writeln!(fd, "<th>{}</th>", s)?;
                 player_hand_val += 1;
             }
@@ -90,13 +94,6 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
         }
         writeln!(fd, "</tr></table>")?;
         return Ok(());
-
-        fn val_to_string(v: u8) -> String {
-            match v {
-                11 => "A".to_string(),
-                v => v.to_string(),
-            }
-        }
     }
 }
 
