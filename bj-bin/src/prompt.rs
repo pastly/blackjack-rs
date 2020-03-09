@@ -1,4 +1,4 @@
-use bj_core::table::Resp;
+use bj_core::resp::Resp;
 use std::io::{self, BufRead, Write};
 
 type NumType = i32;
@@ -48,7 +48,7 @@ fn command_from_str(s: &str) -> Option<Command> {
                 // Double doesn't exist, so just do DoubleElseHit
                 "D" => Some(Command::Resp(Resp::DoubleElseHit)),
                 "P" => Some(Command::Resp(Resp::Split)),
-                _ => None
+                _ => None,
             }
         }
     } else if words.len() == 2 {
@@ -89,7 +89,7 @@ pub fn prompt(s: &str, in_buf: &mut impl BufRead, out_buf: &mut impl Write) -> i
 #[cfg(test)]
 mod tests {
     use super::{command_from_str, prompt, Command};
-    use bj_core::table::Resp;
+    use bj_core::resp::Resp;
 
     fn prompt_with(stdin: &str) -> Command {
         prompt("", &mut stdin.as_bytes(), &mut vec![]).unwrap()
@@ -107,7 +107,10 @@ mod tests {
     #[test]
     fn double() {
         for s in &["d", "D"] {
-            assert_eq!(command_from_str(s), Some(Command::Resp(Resp::DoubleElseHit)));
+            assert_eq!(
+                command_from_str(s),
+                Some(Command::Resp(Resp::DoubleElseHit))
+            );
         }
     }
 

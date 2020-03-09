@@ -1,7 +1,7 @@
 use bj_bin::prompt;
 use bj_core::deck::{Card, Deck};
 use bj_core::hand::{Hand, HandError};
-use bj_core::table::Resp;
+use bj_core::resp::Resp;
 use std::io::{self, BufRead, BufReader, Write};
 
 fn hand_with_value(hand: &Hand) -> String {
@@ -126,7 +126,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         working_hands.push(hand);
                     }
                 }
-                Resp::SurrenderElseHit | Resp::SurrenderElseStand | Resp::SurrenderElseSplit => unimplemented!()
+                Resp::SurrenderElseHit | Resp::SurrenderElseStand | Resp::SurrenderElseSplit => {
+                    unimplemented!()
+                }
             };
             // There must not be anything else at the end of this loop.
             //

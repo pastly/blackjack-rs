@@ -1,4 +1,5 @@
-use crate::table::{Resp, Table};
+use crate::resp::Resp;
+use crate::table::Table;
 use std::io::{self, Write};
 
 pub trait TableRenderer {
