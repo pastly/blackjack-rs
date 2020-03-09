@@ -126,6 +126,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         working_hands.push(hand);
                     }
                 }
+                Resp::SurrenderElseHit | Resp::SurrenderElseStand | Resp::SurrenderElseSplit => unimplemented!()
             };
             // There must not be anything else at the end of this loop.
             //

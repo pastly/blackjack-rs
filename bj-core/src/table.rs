@@ -179,7 +179,9 @@ pub enum Resp {
     DoubleElseHit,
     DoubleElseStand,
     Split,
-    //Surrender,
+    SurrenderElseHit,
+    SurrenderElseStand,
+    SurrenderElseSplit,
 }
 
 #[derive(Debug)]
@@ -219,6 +221,9 @@ impl fmt::Display for Resp {
             Self::DoubleElseHit => write!(f, "Double(Hit)"),
             Self::DoubleElseStand => write!(f, "Double(Stand)"),
             Self::Split => write!(f, "Split"),
+            Self::SurrenderElseHit => write!(f, "Surrender(Hit)"),
+            Self::SurrenderElseStand => write!(f, "Surrender(Stand)"),
+            Self::SurrenderElseSplit => write!(f, "Surrender(Split)"),
         }
     }
 }
@@ -273,9 +278,9 @@ impl Iterator for RespCharIter {
             "P" => Some(Ok(Resp::Split)),
             "Dh" => Some(Ok(Resp::DoubleElseHit)),
             "Ds" => Some(Ok(Resp::DoubleElseStand)),
-            "Rh" => unimplemented!(),
-            "Rs" => unimplemented!(),
-            "Rp" => unimplemented!(),
+            "Rh" => Some(Ok(Resp::SurrenderElseHit)),
+            "Rs" => Some(Ok(Resp::SurrenderElseStand)),
+            "Rp" => Some(Ok(Resp::SurrenderElseSplit)),
             _ => Some(Err(RespError::InvalidCharSequence(s))),
         }
     }

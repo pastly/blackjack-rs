@@ -76,6 +76,9 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
                 Resp::DoubleElseHit => ("double", "Dh"),
                 Resp::DoubleElseStand => ("double", "Ds"),
                 Resp::Split => ("split", "P"),
+                Resp::SurrenderElseHit => ("surrender", "Rh"),
+                Resp::SurrenderElseStand => ("surrender", "Rs"),
+                Resp::SurrenderElseSplit => ("surrender", "Rp"),
             };
             writeln!(fd, "<td class={}>{}</td>", class, label)?;
             if i % 10 == 9 {
