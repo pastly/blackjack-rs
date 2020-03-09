@@ -45,7 +45,8 @@ fn command_from_str(s: &str) -> Option<Command> {
             match words[0] {
                 "H" => Some(Command::Resp(Resp::Hit)),
                 "S" => Some(Command::Resp(Resp::Stand)),
-                "D" => Some(Command::Resp(Resp::Double)),
+                // Double doesn't exist, so just do DoubleElseHit
+                "D" => Some(Command::Resp(Resp::DoubleElseHit)),
                 "P" => Some(Command::Resp(Resp::Split)),
                 _ => None
             }
@@ -106,7 +107,7 @@ mod tests {
     #[test]
     fn double() {
         for s in &["d", "D"] {
-            assert_eq!(command_from_str(s), Some(Command::Resp(Resp::Double)));
+            assert_eq!(command_from_str(s), Some(Command::Resp(Resp::DoubleElseHit)));
         }
     }
 

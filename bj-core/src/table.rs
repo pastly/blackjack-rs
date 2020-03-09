@@ -176,7 +176,8 @@ pub fn dealer_card_from_desc(desc: GameDesc) -> Result<Card, HandError> {
 pub enum Resp {
     Hit,
     Stand,
-    Double,
+    DoubleElseHit,
+    DoubleElseStand,
     Split,
     //Surrender,
 }
@@ -215,7 +216,8 @@ impl fmt::Display for Resp {
         match self {
             Self::Hit => write!(f, "Hit"),
             Self::Stand => write!(f, "Stand"),
-            Self::Double => write!(f, "Double"),
+            Self::DoubleElseHit => write!(f, "Double(Hit)"),
+            Self::DoubleElseStand => write!(f, "Double(Stand)"),
             Self::Split => write!(f, "Split"),
         }
     }
@@ -269,8 +271,8 @@ impl Iterator for RespCharIter {
             "H" => Some(Ok(Resp::Hit)),
             "S" => Some(Ok(Resp::Stand)),
             "P" => Some(Ok(Resp::Split)),
-            "Dh" => unimplemented!(),
-            "Ds" => unimplemented!(),
+            "Dh" => Some(Ok(Resp::DoubleElseHit)),
+            "Ds" => Some(Ok(Resp::DoubleElseStand)),
             "Rh" => unimplemented!(),
             "Rs" => unimplemented!(),
             "Rp" => unimplemented!(),

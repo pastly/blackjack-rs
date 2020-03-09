@@ -262,7 +262,8 @@ pub fn on_button_stand() {
 
 #[wasm_bindgen]
 pub fn on_button_double() {
-    handle_button(Resp::Double)
+    // Double doesn't exist, so just do DoubleElseHit
+    handle_button(Resp::DoubleElseHit)
 }
 
 #[wasm_bindgen]

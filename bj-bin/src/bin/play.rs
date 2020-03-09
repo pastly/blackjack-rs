@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             // player wants to stand/hit/etc. this hand. So handle that.
             match resp {
-                Resp::Double => {
+                Resp::DoubleElseHit | Resp::DoubleElseStand => {
                     // TODO need to add to the bet if betting is implemented
                     if !hand.can_double() {
                         println!("Cannot double {}", hand_with_value(&hand));

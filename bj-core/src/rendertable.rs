@@ -73,7 +73,8 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
             let (class, label) = match resp {
                 Resp::Hit => ("hit", "H"),
                 Resp::Stand => ("stand", "S"),
-                Resp::Double => ("double", "D"),
+                Resp::DoubleElseHit => ("double", "Dh"),
+                Resp::DoubleElseStand => ("double", "Ds"),
                 Resp::Split => ("split", "P"),
             };
             writeln!(fd, "<td class={}>{}</td>", class, label)?;
