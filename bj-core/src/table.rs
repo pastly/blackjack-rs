@@ -1135,6 +1135,9 @@ mod resps_from_buf_tests {
 
     #[test]
     fn bad_first_char() {
+        // check that the 2nd chars htat indicates variants (e.g. 'h' in 'Dh' indicating hit if you
+        // can't double) are correctly refused when they show up first. prefix is a leading set of
+        // unrelated chars. c is the actual problematic char.
         for prefix in ["", "H", "HH"].iter() {
             for c in ['h', 's', 'p'].iter() {
                 let mut s = prefix.to_string();
