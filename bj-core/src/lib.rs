@@ -1,3 +1,4 @@
+pub mod basicstrategy;
 pub mod count;
 pub mod deck;
 pub mod hand;

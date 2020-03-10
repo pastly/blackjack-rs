@@ -1,8 +1,9 @@
 use crate::table::NUM_CELLS;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::io::{self, Read};
 
-#[derive(PartialEq, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Copy, Clone)]
 pub enum Resp {
     Hit,
     Stand,
