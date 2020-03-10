@@ -93,7 +93,7 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
             }
         }
         writeln!(fd, "</tr></table>")?;
-        return Ok(());
+        Ok(())
     }
 }
 
