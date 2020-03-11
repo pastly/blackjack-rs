@@ -189,12 +189,21 @@ fn handle_button(resp: Resp) {
     fn set_hint(given: Resp, correct: Resp, hand: (&Hand, Card), streak: u32) {
         let win = web_sys::window().expect("should have a window in this context");
         let doc = win.document().expect("window should have a document");
+        let given_str = match given {
+            Resp::Hit => "Hit",
+            Resp::Stand => "Stand",
+            Resp::Split => "Split",
+            Resp::DoubleElseHit | Resp::DoubleElseStand => "Double",
+            Resp::SurrenderElseHit | Resp::SurrenderElseStand | Resp::SurrenderElseSplit => {
+                "Surrender"
+            }
+        };
         let s = if given == correct {
             format!("{} correct", given)
         } else {
             format!(
                 "{} wrong. Should {} {} vs {}. Streak was {}",
-                given, correct, hand.0, hand.1, streak
+                given_str, correct, hand.0, hand.1, streak
             )
         };
         doc.get_element_by_id("hint")
