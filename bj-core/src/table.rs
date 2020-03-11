@@ -405,6 +405,36 @@ where
         }
     }
 
+    pub fn as_values_sorted<'a>(&'a self) -> (Vec<&'a T>, Vec<&'a T>, Vec<&'a T>) {
+        let mut resps = Vec::with_capacity(NUM_CELLS);
+        // Safety: okay to set len <= capacity. Rest of function will fill in each item in this vec
+        // such that it is valid
+        unsafe {
+            resps.set_len(NUM_CELLS);
+        }
+        for (desc, resp) in self.iter() {
+            let start = match desc.hand {
+                HandType::Hard => 0,
+                HandType::Soft => HARD_CELLS,
+                HandType::Pair => HARD_CELLS + SOFT_CELLS,
+            };
+            const WIDTH: usize = 10;
+            let col = usize::from(desc.dealer - 2);
+            let row: usize = match desc.hand {
+                HandType::Hard => usize::from(desc.player - 5),
+                HandType::Soft => usize::from(desc.player - 13),
+                HandType::Pair => usize::from(desc.player / 2 - 2),
+            };
+            let idx = start + row * WIDTH + col;
+            assert!(idx < NUM_CELLS);
+            std::mem::replace(&mut resps[idx], resp);
+        }
+        let mut hards = resps;
+        let mut softs = hards.split_off(HARD_CELLS);
+        let pairs = softs.split_off(SOFT_CELLS);
+        (hards, softs, pairs)
+    }
+
     /// Consume the Table and split it into sorted vectors of the hard, soft, and pair subtables.
     pub fn into_values_sorted(self) -> (Vec<T>, Vec<T>, Vec<T>) {
         let mut resps = Vec::with_capacity(NUM_CELLS);

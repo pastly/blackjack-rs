@@ -1,10 +1,12 @@
+mod bs_data;
 mod localstorage;
 
+use bj_core::basicstrategy::BasicStrategy;
 use bj_core::deck::{Card, Deck, Rank, Suit};
 use bj_core::hand::Hand;
 use bj_core::playstats::PlayStats;
 use bj_core::rendertable::{HTMLTableRenderer, TableRenderer};
-use bj_core::resp::{resps_from_buf, Resp};
+use bj_core::resp::Resp;
 use bj_core::table::Table;
 use bj_core::utils::rand_next_hand;
 use console_error_panic_hook;
@@ -20,61 +22,12 @@ const LS_KEY_STREAK: &str = "bj-streak";
 const LS_KEY_EXISTING_HAND: &str = "bj-hand";
 
 lazy_static! {
-    static ref TABLE: Mutex<Table<Resp>> =
-        Mutex::new(Table::new(resps_from_buf(T1_TXT).unwrap()).unwrap());
+    static ref BS_CARD: Mutex<BasicStrategy> =
+        Mutex::new(serde_json::from_reader(bs_data::T1_JSON).unwrap());
 }
 lazy_static! {
     static ref DECK: Mutex<Deck> = Mutex::new(Deck::new_infinite());
 }
-
-const T1_TXT: &[u8] = b"
-## Table
-##     Decks: 4+
-##     Soft 17: dealer hit
-##     Double after split: allowed
-##     Surrender: not allowed
-##     Dealer peek for BJ: yes
-## https://wizardofodds.com/games/blackjack/strategy/calculator/
-# hard hands: player value 5-21 (row) and dealer show 2-A (col)
-H  H  H  H  H  H  H  H  H  H
-H  H  H  H  H  H  H  H  H  H
-H  H  H  H  H  H  H  H  H  H
-H  H  H  H  H  H  H  H  H  H
-H  Dh Dh Dh Dh H  H  H  H  H
-Dh Dh Dh Dh Dh Dh Dh Dh H  H
-Dh Dh Dh Dh Dh Dh Dh Dh Dh Dh
-H  H  S  S  S  H  H  H  H  H
-S  S  S  S  S  H  H  H  H  H
-S  S  S  S  S  H  H  H  H  H
-S  S  S  S  S  H  H  H  H  H
-S  S  S  S  S  H  H  H  H  H
-S  S  S  S  S  S  S  S  S  S
-S  S  S  S  S  S  S  S  S  S
-S  S  S  S  S  S  S  S  S  S
-S  S  S  S  S  S  S  S  S  S
-S  S  S  S  S  S  S  S  S  S
-# soft hands: player value 13-21 (row) and dealer show 2-A (col)
-H  H  H  Dh Dh H  H  H  H  H
-H  H  H  Dh Dh H  H  H  H  H
-H  H  Dh Dh Dh H  H  H  H  H
-H  H  Dh Dh Dh H  H  H  H  H
-H  Dh Dh Dh Dh H  H  H  H  H
-Ds Ds Ds Ds Ds S  S  H  H  H
-S  S  S  S  Ds S  S  S  S  S
-S  S  S  S  S  S  S  S  S  S
-S  S  S  S  S  S  S  S  S  S
-# pair hands: player value 4, 6, ... (row) and dealer show 2-A (col)
-P  P  P  P  P  P  H  H  H  H
-P  P  P  P  P  P  H  H  H  H
-H  H  H  P  P  H  H  H  H  H
-Dh Dh Dh Dh Dh Dh Dh Dh H  H
-P  P  P  P  P  H  H  H  H  H
-P  P  P  P  P  P  H  H  H  H
-P  P  P  P  P  P  P  P  P  P
-P  P  P  P  P  S  P  P  S  S
-S  S  S  S  S  S  S  S  S  S
-P  P  P  P  P  P  P  P  P  P
-";
 
 fn new_play_stats() -> Table<PlayStats> {
     Table::new(std::iter::repeat(PlayStats::new()).take(360)).unwrap()
@@ -131,9 +84,10 @@ pub fn run() -> Result<(), JsValue> {
 }
 
 fn output_resp_table() {
-    let t = Table::new(resps_from_buf(T1_TXT).unwrap()).unwrap();
+    //let t = Table::new(resps_from_buf(T1_TXT).unwrap()).unwrap();
+    let bs_card = &*BS_CARD.lock().unwrap();
     let mut fd: Vec<u8> = vec![];
-    HTMLTableRenderer::render(&mut fd, t).unwrap();
+    HTMLTableRenderer::render(&mut fd, bs_card).unwrap();
     let win = web_sys::window().expect("should have a window in this context");
     let doc = win.document().expect("window should have a document");
     doc.get_element_by_id("strat_html")
@@ -212,7 +166,7 @@ fn handle_button(resp: Resp) {
     // the (player_hand, dealer_card) currently on the screen
     let mut hand: LSVal<(Hand, Card)> = LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
     // the correct response to this (player_hand, dealer_card)
-    let correct = TABLE.lock().unwrap().get(&hand.0, hand.1).unwrap();
+    let correct = BS_CARD.lock().unwrap().table.get(&hand.0, hand.1).unwrap();
     // grab a copy of what the user's existing streak is. If they get the hand wrong, we will want
     // to display this to them and we will soon be clearing out the localstorage copy of their
     // streak

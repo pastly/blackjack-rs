@@ -39,8 +39,8 @@ pub mod rules {
 
 #[derive(Serialize, Deserialize)]
 pub struct BasicStrategy {
-    rules: rules::Rules,
-    table: Table<Resp>,
+    pub rules: rules::Rules,
+    pub table: Table<Resp>,
 }
 
 impl BasicStrategy {

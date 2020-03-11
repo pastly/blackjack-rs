@@ -1,7 +1,7 @@
+use bj_core::basicstrategy::BasicStrategy;
 use bj_core::rendertable::{HTMLTableRenderer, TableRenderer};
-use bj_core::resp::resps_from_buf;
-use bj_core::table::Table;
 use clap::{crate_authors, crate_name, crate_version, App, Arg};
+use serde_json;
 use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
@@ -25,12 +25,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .default_value("/dev/stdout"),
         )
         .get_matches();
-    let table = Table::new(resps_from_buf(
+    let bs_card: BasicStrategy = serde_json::from_reader(
         OpenOptions::new()
             .read(true)
             // safe to unwrap because --input is required
             .open(matches.value_of("input").unwrap())?,
-    )?)?;
+    )?;
     let mut fd = BufWriter::new(
         OpenOptions::new()
             .write(true)
@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             // safe to unwrap because --output is required
             .open(matches.value_of("output").unwrap())?,
     );
-    HTMLTableRenderer::render(&mut fd, table)?;
+    HTMLTableRenderer::render(&mut fd, &bs_card)?;
     fd.flush()?;
     Ok(())
 }
