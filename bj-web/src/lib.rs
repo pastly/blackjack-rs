@@ -1,6 +1,7 @@
 mod bs_data;
 mod localstorage;
 
+use bj_core::basicstrategy::rules;
 use bj_core::basicstrategy::BasicStrategy;
 use bj_core::deck::{Card, Deck, Rank, Suit};
 use bj_core::hand::Hand;
@@ -15,7 +16,7 @@ use localstorage::LSVal;
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::HtmlElement;
+use web_sys::{Element, HtmlElement};
 
 const LS_KEY_TABLE_PLAYSTATS: &str = "bj-table-playstats";
 const LS_KEY_STREAK: &str = "bj-streak";
@@ -78,6 +79,10 @@ pub fn run() -> Result<(), JsValue> {
     let stat_table = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
     let streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
     output_hand(player_hand, *dealer_card);
+    {
+        let bs_card = &*BS_CARD.lock().unwrap();
+        update_buttons((player_hand, *dealer_card), &bs_card.rules);
+    }
     output_stats((player_hand, *dealer_card), &(*stat_table), *streak);
     output_resp_table();
     Ok(())
@@ -162,11 +167,51 @@ fn update_stats(old_hand: (&Hand, Card), old_was_correct: bool) {
     *streak = if old_was_correct { *streak + 1 } else { 0 };
 }
 
+fn update_buttons(hand: (&Hand, Card), rules: &rules::Rules) {
+    let win = web_sys::window().expect("should have a window in this context");
+    let doc = win.document().expect("window should have a document");
+    let hit_enabled = true;
+    let stand_enabled = true;
+    let double_enabled = hand.0.can_double();
+    let split_enabled = hand.0.can_split();
+    let surrender_enabled = match rules.surrender {
+        rules::Surrender::No => false,
+        rules::Surrender::Yes => true,
+        rules::Surrender::NotAce => hand.1.rank() != Rank::RA,
+    };
+    for (id, enabled) in [
+        ("button_hit", hit_enabled),
+        ("button_stand", stand_enabled),
+        ("button_double", double_enabled),
+        ("button_split", split_enabled),
+        ("button_surrender", surrender_enabled),
+    ]
+    .iter()
+    {
+        let class_list = doc
+            .get_element_by_id(id)
+            .expect("should exist button")
+            .dyn_ref::<Element>()
+            .expect("button should be Element")
+            .class_list();
+        if *enabled {
+            class_list
+                .remove_1("hide")
+                .expect("Unable to add hide class");
+        } else {
+            class_list
+                .add_1("hide")
+                .expect("Unable to remove hide class");
+        }
+    }
+}
+
 fn handle_button(resp: Resp) {
     // the (player_hand, dealer_card) currently on the screen
     let mut hand: LSVal<(Hand, Card)> = LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
     // the correct response to this (player_hand, dealer_card)
-    let correct = BS_CARD.lock().unwrap().table.get(&hand.0, hand.1).unwrap();
+    let bs_card = BS_CARD.lock().unwrap();
+    let correct = bs_card.table.get(&hand.0, hand.1).unwrap();
     // grab a copy of what the user's existing streak is. If they get the hand wrong, we will want
     // to display this to them and we will soon be clearing out the localstorage copy of their
     // streak
@@ -181,6 +226,7 @@ fn handle_button(resp: Resp) {
     let stats: LSVal<Table<PlayStats>> = LSVal::from_ls(LS_KEY_TABLE_PLAYSTATS).unwrap();
     let _ = hand.swap(rand_next_hand(&*stats)); // (1)
     output_hand(&hand.0, hand.1);
+    update_buttons((&hand.0, hand.1), &bs_card.rules);
     // update_stats() will have either incremented their streak or reset it to zero, so we need tor
     // refetch their streak from localstorage
     let new_streak = *LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
@@ -233,6 +279,12 @@ pub fn on_button_double() {
 #[wasm_bindgen]
 pub fn on_button_split() {
     handle_button(Resp::Split)
+}
+
+#[wasm_bindgen]
+pub fn on_button_surrender() {
+    // Surrender doesn't exist, so just do SurrenderElseHit
+    handle_button(Resp::SurrenderElseHit)
 }
 
 #[wasm_bindgen]

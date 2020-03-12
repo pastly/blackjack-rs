@@ -60,6 +60,8 @@
           on_button_double();  
         } else if (key.key == "p" || key.key == "P") {
           on_button_split();  
+        } else if (key.key == "r" || key.key == "R") {
+          on_button_surrender();
         }
       });
     </script>
@@ -67,17 +69,20 @@
     <div id=player_label>Player:</div><div class=card id=player_cards></div>
     <div id=dealer_label>Dealer:</div><div class=card id=dealer_cards></div>
     <div id=buttons>
-      <input type="button" value="Hit"
+      <input type="button" id=button_hit value="Hit"
           onClick='on_button_hit();'
       />
-      <input type="button" value="Stand"
+      <input type="button" id=button_stand value="Stand"
           onClick='on_button_stand();'
       />
-      <input type="button" value="Double"
+      <input type="button" id=button_double value="Double"
           onClick='on_button_double();'
       />
-      <input type="button" value="sPlit"
+      <input type="button" id=button_split value="sPlit"
           onClick='on_button_split();'
+      />
+      <input type="button" id=button_surrender value="suRrender"
+          onClick='on_button_surrender();'
       />
     </div> <!-- buttons -->
     <div id=stats>

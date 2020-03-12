@@ -110,7 +110,7 @@ impl Hand {
 
     /// Whether or not the hand can be split (i.e. whether or not it has two cards with the same
     /// value)
-    fn can_split(&self) -> bool {
+    pub fn can_split(&self) -> bool {
         self.cards.len() == 2 && self.cards[0].value() == self.cards[1].value()
     }
 
