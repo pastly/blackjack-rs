@@ -21,8 +21,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, PartialEq, Copy, Clone, Default, Debug)]
 pub struct PlayStats {
-    seen: u16,
-    correct: u16,
+    seen: u32,
+    correct: u32,
 }
 
 impl PlayStats {
@@ -47,18 +47,18 @@ impl PlayStats {
         self.inc_by(1, correct)
     }
 
-    pub fn inc_by(&mut self, amt: u16, correct: bool) {
+    pub fn inc_by(&mut self, amt: u32, correct: bool) {
         self.seen += amt;
         if correct {
             self.correct += amt;
         }
     }
 
-    pub fn seen(self) -> u16 {
+    pub fn seen(self) -> u32 {
         self.seen
     }
 
-    pub fn correct(self) -> u16 {
+    pub fn correct(self) -> u32 {
         self.correct
     }
 }
@@ -89,7 +89,7 @@ impl std::ops::Add for PlayStats {
 #[cfg(test)]
 mod tests {
     use super::PlayStats;
-    const COUNT_MANY: usize = 10;
+    const COUNT_MANY: u32 = 10;
 
     #[test]
     fn weight_one() {
@@ -141,7 +141,7 @@ mod tests {
         for _ in 0..COUNT_MANY {
             s.inc(false);
         }
-        assert_eq!(s.seen, COUNT_MANY as u16);
+        assert_eq!(s.seen, COUNT_MANY);
         assert_eq!(s.correct, 0);
     }
 
@@ -152,17 +152,17 @@ mod tests {
         for _ in 0..COUNT_MANY {
             s.inc(true);
         }
-        assert_eq!(s.seen, COUNT_MANY as u16);
-        assert_eq!(s.correct, COUNT_MANY as u16);
+        assert_eq!(s.seen, COUNT_MANY);
+        assert_eq!(s.correct, COUNT_MANY);
     }
 
     #[test]
     fn inc_by_incorrect() {
         // increment by many works
         let mut s = PlayStats::new();
-        s.inc_by(COUNT_MANY as u16, false);
-        s.inc_by(COUNT_MANY as u16, false);
-        assert_eq!(s.seen, COUNT_MANY as u16 * 2);
+        s.inc_by(COUNT_MANY, false);
+        s.inc_by(COUNT_MANY, false);
+        assert_eq!(s.seen, COUNT_MANY * 2);
         assert_eq!(s.correct, 0);
     }
 
@@ -170,18 +170,18 @@ mod tests {
     fn inc_by_correct() {
         // increment by many works
         let mut s = PlayStats::new();
-        s.inc_by(COUNT_MANY as u16, true);
-        s.inc_by(COUNT_MANY as u16, true);
-        assert_eq!(s.seen, COUNT_MANY as u16 * 2);
-        assert_eq!(s.correct, COUNT_MANY as u16 * 2);
+        s.inc_by(COUNT_MANY, true);
+        s.inc_by(COUNT_MANY, true);
+        assert_eq!(s.seen, COUNT_MANY * 2);
+        assert_eq!(s.correct, COUNT_MANY * 2);
     }
 
     #[test]
     fn inc_same() {
         // inc and inc_by act the same
         let mut s1 = PlayStats::new();
-        s1.inc_by(COUNT_MANY as u16, true);
-        s1.inc_by(COUNT_MANY as u16, false);
+        s1.inc_by(COUNT_MANY, true);
+        s1.inc_by(COUNT_MANY, false);
         let mut s2 = PlayStats::new();
         for _ in 0..COUNT_MANY {
             s2.inc(true);
@@ -214,8 +214,8 @@ mod tests {
         for _ in 0..COUNT_MANY {
             s1 += s2;
         }
-        assert_eq!(s1.seen(), COUNT_MANY as u16);
-        assert_eq!(s1.correct(), COUNT_MANY as u16);
+        assert_eq!(s1.seen(), COUNT_MANY);
+        assert_eq!(s1.correct(), COUNT_MANY);
     }
 
     #[test]
@@ -241,10 +241,10 @@ mod tests {
     fn add_2() {
         let mut s1 = PlayStats::new();
         let mut s2 = PlayStats::new();
-        s1.inc_by(COUNT_MANY as u16, true);
-        s2.inc_by(COUNT_MANY as u16, false);
+        s1.inc_by(COUNT_MANY, true);
+        s2.inc_by(COUNT_MANY, false);
         let s3 = s1 + s2;
-        assert_eq!(s3.seen(), 2 * COUNT_MANY as u16);
-        assert_eq!(s3.correct(), COUNT_MANY as u16);
+        assert_eq!(s3.seen(), 2 * COUNT_MANY);
+        assert_eq!(s3.correct(), COUNT_MANY);
     }
 }
