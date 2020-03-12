@@ -123,12 +123,12 @@ fn output_stats(current_hand: (&Hand, Card), stat_table: &Table<PlayStats>, stre
         .fold((0, 0), |(acc_correct, acc_seen), stat| {
             (acc_correct + stat.correct(), acc_seen + stat.seen())
         });
-    set_stat(Stat::Correct, correct.into());
-    set_stat(Stat::Seen, seen.into());
+    set_stat(Stat::Correct, correct);
+    set_stat(Stat::Seen, seen);
     set_stat(Stat::Streak, streak);
     let stat = stat_table.get(current_hand.0, current_hand.1).unwrap();
-    set_stat(Stat::HandCorrect, stat.correct().into());
-    set_stat(Stat::HandSeen, stat.seen().into());
+    set_stat(Stat::HandCorrect, stat.correct());
+    set_stat(Stat::HandSeen, stat.seen());
 
     enum Stat {
         Correct,
