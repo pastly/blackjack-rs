@@ -15,7 +15,7 @@ impl HTMLTableRenderer {
             "
 <style>
 #strat_source {{ color: inherit; }}
-.hit, .stand, .double, .split {{
+.hit, .stand, .double, .split, .surrender {{
     width:  1.5em;
     height: 1.5em;
     text-align: center;
