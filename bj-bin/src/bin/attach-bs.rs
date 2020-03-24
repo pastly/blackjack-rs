@@ -98,9 +98,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
     let rules = rules::Rules {
         decks,
-        double_after_split: das,
-        hit_soft_17: hit17,
-        peek_bj: peek,
+        double_after_split: das.into(),
+        hit_soft_17: hit17.into(),
+        peek_bj: peek.into(),
         surrender,
     };
     let bs: BasicStrategy = (rules, table).into();

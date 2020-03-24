@@ -1,5 +1,5 @@
 use bj_core::basicstrategy::BasicStrategy;
-use bj_core::rendertable::{HTMLTableRenderer, TableRenderer};
+use bj_core::rendertable::{HTMLTableRenderer, TXTTableRenderer, TableRenderer};
 use clap::{crate_authors, crate_name, crate_version, App, Arg};
 use serde_json;
 use std::error::Error;
@@ -24,6 +24,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .value_name("STRAT_CARD")
                 .default_value("/dev/stdout"),
         )
+        .arg(
+            Arg::with_name("format")
+                .short("f")
+                .long("format")
+                .takes_value(true)
+                .possible_values(&["html", "txt"])
+                .required(true),
+        )
         .get_matches();
     let bs_card: BasicStrategy = serde_json::from_reader(
         OpenOptions::new()
@@ -39,7 +47,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             // safe to unwrap because --output is required
             .open(matches.value_of("output").unwrap())?,
     );
-    HTMLTableRenderer::render(&mut fd, &bs_card)?;
+    match matches.value_of("format").unwrap() {
+        "html" => HTMLTableRenderer::render(&mut fd, &bs_card)?,
+        "txt" => TXTTableRenderer::render(&mut fd, &bs_card)?,
+        _ => unimplemented!(),
+    };
     fd.flush()?;
     Ok(())
 }

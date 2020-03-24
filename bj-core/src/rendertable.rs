@@ -10,28 +10,6 @@ pub struct HTMLTableRenderer;
 
 impl HTMLTableRenderer {
     fn header(mut fd: impl Write, bs_rules: &rules::Rules) -> io::Result<()> {
-        let decks = match bs_rules.decks {
-            rules::NumDecks::One => "1",
-            rules::NumDecks::Two => "2",
-            rules::NumDecks::Three => "3",
-            rules::NumDecks::FourPlus => "4+",
-        };
-        let soft_17 = if bs_rules.hit_soft_17 {
-            "Dealer hits"
-        } else {
-            "Dealer stands"
-        };
-        let das = if bs_rules.double_after_split {
-            "Allowed"
-        } else {
-            "Not allowed"
-        };
-        let peek_bj = if bs_rules.peek_bj { "Yes" } else { "No" };
-        let sur = match bs_rules.surrender {
-            rules::Surrender::No => "No",
-            rules::Surrender::Yes => "Any upcard",
-            rules::Surrender::NotAce => "On dealer 2 through 10",
-        };
         writeln!(
             fd,
             "
@@ -58,11 +36,11 @@ impl HTMLTableRenderer {
 <tr><td>Dealer peek</td><td>{peek_bj}</td></tr>
 </table>
 ",
-            decks = decks,
-            soft_17 = soft_17,
-            das = das,
-            peek_bj = peek_bj,
-            sur = sur,
+            decks = bs_rules.decks,
+            soft_17 = bs_rules.hit_soft_17,
+            das = bs_rules.double_after_split,
+            peek_bj = bs_rules.peek_bj,
+            sur = bs_rules.surrender,
         )
     }
 
@@ -134,6 +112,65 @@ impl TableRenderer for HTMLTableRenderer {
         HTMLTableRenderer::subtable(&mut fd, softs, "Soft")?;
         HTMLTableRenderer::subtable(&mut fd, pairs, "Pair")?;
         HTMLTableRenderer::footer(&mut fd)?;
+        Ok(())
+    }
+}
+
+pub struct TXTTableRenderer;
+
+impl TXTTableRenderer {
+    fn header(mut fd: impl Write, bs_rules: &rules::Rules) -> io::Result<()> {
+        writeln!(
+            fd,
+            "
+# Decks:              {decks}
+# Soft 17:            {soft_17}
+# Double after split: {das}
+# Surrender:          {sur}
+# Dealer peek:        {peek_bj}
+# Source: https://wizardofodds.com/games/blackjack/strategy/calculator/
+",
+            decks = bs_rules.decks,
+            soft_17 = bs_rules.hit_soft_17,
+            das = bs_rules.double_after_split,
+            sur = bs_rules.surrender,
+            peek_bj = bs_rules.peek_bj,
+        )
+    }
+
+    fn subtable(mut fd: impl Write, v: Vec<&Resp>, label: &str) -> io::Result<()> {
+        writeln!(fd, "# {} table", label)?;
+        for (i, resp) in v.iter().enumerate() {
+            let label = match resp {
+                Resp::Hit => "H ",
+                Resp::Stand => "S ",
+                Resp::DoubleElseHit => "Dh",
+                Resp::DoubleElseStand => "Ds",
+                Resp::Split => "P ",
+                Resp::SurrenderElseHit => "Rh",
+                Resp::SurrenderElseStand => "Rs",
+                Resp::SurrenderElseSplit => "Rp",
+            };
+            write!(fd, "{} ", label)?;
+            if i % 10 == 9 {
+                writeln!(fd)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl TableRenderer for TXTTableRenderer {
+    fn render(mut fd: impl Write, strat: &BasicStrategy) -> io::Result<()> {
+        let BasicStrategy { rules, table } = strat;
+        let (hards, softs, pairs) = table.as_values_sorted();
+        TXTTableRenderer::header(&mut fd, &rules)?;
+        TXTTableRenderer::subtable(&mut fd, hards, "Hard")?;
+        writeln!(fd)?;
+        TXTTableRenderer::subtable(&mut fd, softs, "Soft")?;
+        writeln!(fd)?;
+        TXTTableRenderer::subtable(&mut fd, pairs, "Pair")?;
+        writeln!(fd)?;
         Ok(())
     }
 }
