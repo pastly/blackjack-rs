@@ -11,6 +11,8 @@ cache: cargo
 addons:
   chrome: stable
   firefox: latest
+install:
+  - curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 script:
   - cargo test
   - cd bj-web
