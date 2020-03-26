@@ -100,3 +100,42 @@ where
     let val = serde_json::to_string(&val).unwrap();
     ls().set(key, &val).unwrap()
 }
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use wasm_bindgen_test::*;
+    wasm_bindgen_test_configure!(run_in_browser);
+    const LS_KEY: &str = "ThisIsALongKeyStringBecauseShortOnesDontWork";
+    #[wasm_bindgen_test]
+    fn from_ls_doesnt_exist() {
+        // fetching an item that doesn't exist returns None
+        let val: Option<LSVal<()>> = LSVal::from_ls(LS_KEY);
+        assert!(val.is_none());
+    }
+
+    #[wasm_bindgen_test]
+    fn from_ls_does_exist() {
+        // fetching an item that does exist returns it. Even if the scope in which the item was
+        // inserted is gone
+        {
+            let val = LSVal::from_ls_or_default(LS_KEY, 1u8);
+            assert_eq!(*val, 1);
+        }
+        let val: LSVal<u8> = LSVal::from_ls(LS_KEY).unwrap();
+        assert_eq!(*val, 1);
+    }
+
+    #[wasm_bindgen_test]
+    fn from_ls_or_default_doesnt_overwrite() {
+        // when using the or_default variant, it doesn't overwrite the existing value
+        {
+            // set an initial value
+            let val = LSVal::from_ls_or_default(LS_KEY, 1u8);
+            assert_eq!(*val, 1);
+        }
+        // fetch again, but make sure we don't overwrite the existing value
+        let val = LSVal::from_ls_or_default(LS_KEY, 2u8);
+        assert_eq!(*val, 1);
+    }
+}

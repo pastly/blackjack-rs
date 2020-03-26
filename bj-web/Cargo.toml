@@ -5,7 +5,8 @@ authors = ["Matt Traudt <sirmatt@ksu.edu>"]
 edition = "2018"
 
 [lib]
-crate-type =["cdylib"]
+crate-type = ["cdylib"]
+#crate-type = ["lib", "cdylib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -30,3 +31,6 @@ features = [
    'Storage',
    'Window',
 ]
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
