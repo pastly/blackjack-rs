@@ -8,3 +8,11 @@ jobs:
     - rust: nightly
   fast_finish: true
 cache: cargo
+addons:
+  chrome: stable
+  firefox: latest
+script:
+  - cargo test
+  - cd bj-web
+  - wasm-pack test --firefox --headless
+  - wasm-pack test --chrome  --headless
