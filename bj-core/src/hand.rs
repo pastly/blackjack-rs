@@ -114,6 +114,12 @@ impl Hand {
         self.cards.len() == 2 && self.cards[0].value() == self.cards[1].value()
     }
 
+    /// Whether or not the hand can be surrendered (i.e. whether or not it has just 2 cards)
+    /// XXX TODO the rules might not allow for this hand to be surrendered
+    pub fn can_surrender(&self) -> bool {
+        self.cards.len() == 2
+    }
+
     /// Add a card to the hand. Upon completion of this method, all properties will update the new
     /// state of the hand: it may now be bust, no longer soft, have a different value, etc.
     pub fn push(&mut self, c: Card) {
@@ -690,6 +696,26 @@ mod tests {
                 hand.can_split(),
                 hand.cards[0].value() == hand.cards[1].value(),
             );
+        }
+    }
+
+    #[test]
+    fn surrender_1() {
+        // can surrender any 2 card hand
+        for hand in all_2card_hands() {
+            assert!(hand.can_surrender());
+        }
+    }
+
+    #[test]
+    fn surrender_2() {
+        // cannot surrender any 3+ card hand
+        for base in all_2card_hands() {
+            for r1 in ALL_RANKS.iter() {
+                let mut hand3 = base.clone();
+                hand3.cards.push(Card::new(*r1, SUIT));
+                assert!(!hand3.can_surrender());
+            }
         }
     }
 
