@@ -3,7 +3,7 @@ use serde_derive::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt;
 
-pub(crate) const ALL_RANKS: [Rank; 13] = [
+pub const ALL_RANKS: [Rank; 13] = [
     Rank::R2,
     Rank::R3,
     Rank::R4,
@@ -31,6 +31,14 @@ const CLUB: &str = "♧";
 
 pub fn rand_suit() -> Suit {
     *ALL_SUITS.choose(&mut thread_rng()).unwrap()
+}
+
+fn rand_rank() -> Rank {
+    *ALL_RANKS.choose(&mut thread_rng()).unwrap()
+}
+
+pub fn rand_card() -> Card {
+    Card::new(rand_rank(), rand_suit())
 }
 
 #[derive(Hash, PartialEq, Eq, PartialOrd, Clone, Copy, Debug, Serialize, Deserialize)]
