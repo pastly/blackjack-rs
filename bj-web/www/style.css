@@ -12,14 +12,23 @@ div {
 	margin: 0 auto;
 	display: grid;
 	grid-template-columns: 1fr 4fr;
-	grid-template-rows: auto auto auto auto auto auto;
+	grid-template-rows: auto auto auto auto auto auto auto;
 	grid-template-areas:
 		"player_label player_cards"
 		"dealer_label dealer_cards"
 		"buttons      buttons     "
 		"stats        stats       "
 		"hint         hint        "
-		"strat        strat       ";
+		"strat        strat       "
+		"footer       footer      ";
+}
+
+footer {
+	font-size: small;
+}
+
+a {
+	color: inherit;
 }
 
 #player_label { grid-area: player_label; }
@@ -28,6 +37,7 @@ div {
 #stats { grid-area: stats; }
 #hint { grid-area: hint; }
 #strat { grid-area: strat; }
+#footer { grid-area: footer; }
 
 .card {
 	font-size: 450%;
@@ -51,7 +61,7 @@ div {
 	#content {
 		max-width: 1020px;
 		grid-template-columns: auto;
-		grid-template-rows: auto auto auto auto auto auto auto auto;
+		grid-template-rows: auto auto auto auto auto auto auto auto auto;
 		grid-template-areas:
 			"player_label"
 			"player_cards"
@@ -60,7 +70,8 @@ div {
 			"buttons     "
 			"stats       "
 			"hint        "
-			"strat       ";
+			"strat       "
+			"footer      ";
 	}
 	body, input {
 		font-size: 2em;
