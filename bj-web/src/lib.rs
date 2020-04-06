@@ -1,4 +1,5 @@
 mod bs_data;
+mod button;
 mod localstorage;
 
 use bj_core::basicstrategy::rules;
@@ -10,6 +11,7 @@ use bj_core::rendertable::{HTMLTableRenderer, TableRenderer};
 use bj_core::resp::Resp;
 use bj_core::table::Table;
 use bj_core::utils::rand_next_hand;
+use button::Button;
 use console_error_panic_hook;
 use lazy_static::lazy_static;
 use localstorage::LSVal;
@@ -62,6 +64,32 @@ fn card_char(card: Card) -> char {
     // Safety: Value will always be a valid char thanks to match statements and enums on card
     // suits and ranks.
     unsafe { std::char::from_u32_unchecked(val) }
+}
+
+fn is_correct_resp_button(btn: &Button, correct: Resp, hand: (&Hand, Card)) -> bool {
+    let (player, _dealer) = hand;
+    match btn {
+        Button::Split => correct == Resp::Split,
+        Button::Hit => {
+            correct == Resp::Hit
+                || correct == Resp::DoubleElseHit && !player.can_double()
+                || correct == Resp::SurrenderElseHit && !player.can_surrender()
+        }
+        Button::Stand => {
+            correct == Resp::Stand
+                || correct == Resp::DoubleElseStand && !player.can_double()
+                || correct == Resp::SurrenderElseStand && !player.can_surrender()
+        }
+        Button::Double => {
+            correct == Resp::DoubleElseHit && player.can_double()
+                || correct == Resp::DoubleElseStand && player.can_double()
+        }
+        Button::Surrender => {
+            correct == Resp::SurrenderElseHit && player.can_surrender()
+                || correct == Resp::SurrenderElseStand && player.can_surrender()
+                || correct == Resp::SurrenderElseSplit && player.can_surrender()
+        }
+    }
 }
 
 #[wasm_bindgen]
@@ -206,21 +234,25 @@ fn update_buttons(hand: (&Hand, Card), rules: &rules::Rules) {
     }
 }
 
-fn handle_button(resp: Resp) {
+fn handle_button(btn: Button) {
     // the (player_hand, dealer_card) currently on the screen
     let mut hand: LSVal<(Hand, Card)> = LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
-    // the correct response to this (player_hand, dealer_card)
+    // the correct response to this (player_hand, dealer_card). We store the bool is_correct as
+    // well because whether or not the response is correct is more complex than button == resp: if
+    // the correct Resp is DoubleElseHit (or its cousins) then it is not enough to simply check if
+    // the Double button was pressed.
     let bs_card = BS_CARD.lock().unwrap();
-    let correct = bs_card.table.get(&hand.0, hand.1).unwrap();
+    let correct: Resp = bs_card.table.get(&hand.0, hand.1).unwrap();
+    let is_correct = is_correct_resp_button(&btn, correct, (&hand.0, hand.1));
     // grab a copy of what the user's existing streak is. If they get the hand wrong, we will want
     // to display this to them and we will soon be clearing out the localstorage copy of their
     // streak
     let old_streak = *LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
     // update localstorage state for player statistics
-    update_stats((&hand.0, hand.1), resp == correct);
+    update_stats((&hand.0, hand.1), is_correct);
     // display the "hint": player got it right, or they got it wrong and ___ is correct and ___ was
     // their streak
-    set_hint(resp, correct, (&hand.0, hand.1), old_streak);
+    set_hint(&btn, correct, (&hand.0, hand.1), is_correct, old_streak);
     // get a LSVal-wrapped ref to their stats so that we can (1) generate an appropriate next hand
     // for them and (2) tell them what their stats are for the new hand
     let stats: LSVal<Table<PlayStats>> = LSVal::from_ls(LS_KEY_TABLE_PLAYSTATS).unwrap();
@@ -232,24 +264,15 @@ fn handle_button(resp: Resp) {
     let new_streak = *LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
     output_stats((&hand.0, hand.1), &(*stats), new_streak); // (2)
 
-    fn set_hint(given: Resp, correct: Resp, hand: (&Hand, Card), streak: u32) {
+    fn set_hint(given: &Button, correct: Resp, hand: (&Hand, Card), is_correct: bool, streak: u32) {
         let win = web_sys::window().expect("should have a window in this context");
         let doc = win.document().expect("window should have a document");
-        let given_str = match given {
-            Resp::Hit => "Hit",
-            Resp::Stand => "Stand",
-            Resp::Split => "Split",
-            Resp::DoubleElseHit | Resp::DoubleElseStand => "Double",
-            Resp::SurrenderElseHit | Resp::SurrenderElseStand | Resp::SurrenderElseSplit => {
-                "Surrender"
-            }
-        };
-        let s = if given == correct {
+        let s = if is_correct {
             format!("{} correct", given)
         } else {
             format!(
                 "{} wrong. Should {} {} vs {}. Streak was {}",
-                given_str, correct, hand.0, hand.1, streak
+                given, correct, hand.0, hand.1, streak
             )
         };
         doc.get_element_by_id("hint")
@@ -262,29 +285,27 @@ fn handle_button(resp: Resp) {
 
 #[wasm_bindgen]
 pub fn on_button_hit() {
-    handle_button(Resp::Hit)
+    handle_button(Button::Hit)
 }
 
 #[wasm_bindgen]
 pub fn on_button_stand() {
-    handle_button(Resp::Stand)
+    handle_button(Button::Stand)
 }
 
 #[wasm_bindgen]
 pub fn on_button_double() {
-    // Double doesn't exist, so just do DoubleElseHit
-    handle_button(Resp::DoubleElseHit)
+    handle_button(Button::Double)
 }
 
 #[wasm_bindgen]
 pub fn on_button_split() {
-    handle_button(Resp::Split)
+    handle_button(Button::Split)
 }
 
 #[wasm_bindgen]
 pub fn on_button_surrender() {
-    // Surrender doesn't exist, so just do SurrenderElseHit
-    handle_button(Resp::SurrenderElseHit)
+    handle_button(Button::Surrender)
 }
 
 #[wasm_bindgen]
@@ -297,4 +318,266 @@ pub fn on_button_clear_stats() {
     *streak = 0;
     let (player, dealer) = &*LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
     output_stats((&player, *dealer), &(*stat_table), *streak);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bj_core::deck::rand_card;
+
+    const NUM_RAND_HANDS: usize = 1000;
+
+    struct RandomHandIter {
+        hand_size: usize,
+    }
+
+    impl Iterator for RandomHandIter {
+        type Item = (Hand, Card);
+
+        fn next(&mut self) -> Option<Self::Item> {
+            let mut player_cards = Vec::with_capacity(self.hand_size);
+            player_cards.extend(std::iter::repeat_with(rand_card).take(self.hand_size));
+            let player = Hand::new(&player_cards);
+            let dealer = rand_card();
+            Some((player, dealer))
+        }
+    }
+
+    fn random_hands(hand_size: usize, n: usize) -> impl Iterator<Item = (Hand, Card)> {
+        RandomHandIter { hand_size }.into_iter().take(n)
+    }
+
+    //fn is_correct_resp_button(btn: &Button, correct: Resp, hand: (&Hand, Card)) -> bool {
+
+    #[test]
+    fn correct_resp_hit_1() {
+        // Hit button with Resp::Hit and a random hand should be correct
+        let btn = Button::Hit;
+        let correct = Resp::Hit;
+        for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+        }
+        for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+        }
+    }
+
+    #[test]
+    fn correct_resp_hit_2() {
+        // Hit button with Resp::DoubleElseHit and a 3 card hand should be correct
+        let btn = Button::Hit;
+        let correct = Resp::DoubleElseHit;
+        for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+        }
+    }
+
+    #[test]
+    fn correct_resp_hit_3() {
+        // Hit button with Resp::SurrenderElseHit and a 3 card hand should be correct
+        let btn = Button::Hit;
+        let correct = Resp::SurrenderElseHit;
+        for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+        }
+    }
+
+    #[test]
+    fn correct_resp_hit_bad_1() {
+        // Hit button with Resp::DoubleElseHit and a 2 card hand should be wrong
+        let btn = Button::Hit;
+        let correct = Resp::DoubleElseHit;
+        for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+            assert!(!is_correct_resp_button(&btn, correct, (&player, dealer)));
+        }
+    }
+
+    #[test]
+    fn correct_resp_hit_bad_2() {
+        // Hit button with Resp::SurrenderElseHit and a 2 card hand should be wrong
+        let btn = Button::Hit;
+        let correct = Resp::SurrenderElseHit;
+        for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+            assert!(!is_correct_resp_button(&btn, correct, (&player, dealer)));
+        }
+    }
+
+    #[test]
+    fn correct_resp_hit_bad_3() {
+        // Hit button with Resp not involving hit are wrong
+        let btn = Button::Hit;
+        for correct in &[
+            Resp::Stand,
+            Resp::DoubleElseStand,
+            Resp::Split,
+            Resp::SurrenderElseStand,
+            Resp::SurrenderElseSplit,
+        ] {
+            for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+            }
+            for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+            }
+        }
+    }
+
+    #[test]
+    fn correct_resp_stand_1() {
+        // Stand button with Resp::Stand and a random hand should be correct
+        let btn = Button::Stand;
+        let correct = Resp::Stand;
+        for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+        }
+        for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+        }
+    }
+
+    #[test]
+    fn correct_resp_stand_2() {
+        // Stand button with Resp::DoubleElseStand and 3 card hand is correct
+        let btn = Button::Stand;
+        let correct = Resp::DoubleElseStand;
+        for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+        }
+    }
+
+    #[test]
+    fn correct_resp_stand_3() {
+        // Stand button with Resp::SurrenderElseStand and 3 card hand is correct
+        let btn = Button::Stand;
+        let correct = Resp::SurrenderElseStand;
+        for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+        }
+    }
+
+    #[test]
+    fn correct_resp_stand_bad_1() {
+        // Stand button with Resp::DoubleElseStand and 2 card hand is wrong
+        let btn = Button::Stand;
+        let correct = Resp::DoubleElseStand;
+        for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+            assert!(!is_correct_resp_button(&btn, correct, (&player, dealer)));
+        }
+    }
+
+    #[test]
+    fn correct_resp_stand_bad_2() {
+        // Stand button with Resp::SurrenderElseStand and 2 card hand is wrong
+        let btn = Button::Stand;
+        let correct = Resp::SurrenderElseStand;
+        for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+            assert!(!is_correct_resp_button(&btn, correct, (&player, dealer)));
+        }
+    }
+
+    #[test]
+    fn correct_resp_stand_bad_3() {
+        // Stand button with Resp not involving stand are wrong
+        let btn = Button::Stand;
+        for correct in &[
+            Resp::Hit,
+            Resp::DoubleElseHit,
+            Resp::Split,
+            Resp::SurrenderElseHit,
+            Resp::SurrenderElseSplit,
+        ] {
+            for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+            }
+            for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+            }
+        }
+    }
+
+    #[test]
+    fn correct_resp_double() {
+        // Double button with DoubleElse* and 2 card hand is correct
+        let btn = Button::Double;
+        for correct in &[Resp::DoubleElseHit, Resp::DoubleElseStand] {
+            for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+                assert!(is_correct_resp_button(&btn, *correct, (&player, dealer)));
+            }
+        }
+    }
+
+    #[test]
+    fn correct_resp_double_bad_1() {
+        // Double button with DoubleElse* and 3 card hand is wrong
+        let btn = Button::Double;
+        for correct in &[Resp::DoubleElseHit, Resp::DoubleElseStand] {
+            for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+            }
+        }
+    }
+
+    #[test]
+    fn correct_resp_double_bad_2() {
+        // Double button with Resp not involving double is wrong
+        let btn = Button::Double;
+        for correct in &[
+            Resp::Hit,
+            Resp::Stand,
+            Resp::Split,
+            Resp::SurrenderElseHit,
+            Resp::SurrenderElseStand,
+            Resp::SurrenderElseSplit,
+        ] {
+            for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+            }
+            for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+            }
+        }
+    }
+
+    #[test]
+    fn correct_resp_surrender_bad_1() {
+        // Surrender button with Resp not involve surrender is wrong
+        let btn = Button::Surrender;
+        for correct in &[
+            Resp::Hit,
+            Resp::Stand,
+            Resp::DoubleElseHit,
+            Resp::DoubleElseStand,
+            Resp::Split,
+        ] {
+            for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+            }
+            for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+            }
+        }
+    }
+
+    #[test]
+    fn correct_resp_surrender_1() {
+        // Surrender button always correct with SurrenderElse* and 2 cards: the times it isn't
+        // correct are when the table rules don't allow for it, thus it wouldn't show up in the
+        // chart, thus this function wouldn't even be getting called with this combination of
+        // arguments.
+        //
+        // Always correct with 2, always wrong with 3
+        let btn = Button::Surrender;
+        for correct in &[
+            Resp::SurrenderElseHit,
+            Resp::SurrenderElseStand,
+            Resp::SurrenderElseSplit,
+        ] {
+            for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+                assert!(is_correct_resp_button(&btn, *correct, (&player, dealer)));
+            }
+            for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+            }
+        }
+    }
 }
