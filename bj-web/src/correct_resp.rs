@@ -1,7 +1,7 @@
+use super::button::Button;
 use bj_core::deck::Card;
 use bj_core::hand::Hand;
 use bj_core::resp::Resp;
-use super::button::Button;
 
 pub(crate) fn is_correct_resp_button(btn: &Button, correct: Resp, hand: (&Hand, Card)) -> bool {
     let (player, _dealer) = hand;

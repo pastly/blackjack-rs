@@ -1,7 +1,7 @@
 mod bs_data;
 mod button;
-mod localstorage;
 mod correct_resp;
+mod localstorage;
 
 use bj_core::basicstrategy::rules;
 use bj_core::basicstrategy::BasicStrategy;
@@ -295,4 +295,3 @@ pub fn on_button_clear_stats() {
     let (player, dealer) = &*LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
     output_stats((&player, *dealer), &(*stat_table), *streak);
 }
-
