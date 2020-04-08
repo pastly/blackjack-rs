@@ -3,3 +3,4 @@
 **/*.rs.bk
 *.swp
 play-stats.json.xz
+www-out
