@@ -12,7 +12,7 @@ BIN_EXTS = [
 ]
 VERSION_STR = None
 
-logging.basicConfig(filename='/dev/stdout', level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 
 def abspath(p):
