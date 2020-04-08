@@ -4,7 +4,7 @@ import socketserver
 import os
 
 PORT = 8000
-DIR = "www"
+DIR = "www-out"
 
 Handler = http.server.SimpleHTTPRequestHandler
 Handler.extensions_map.update({
