@@ -7,8 +7,12 @@ else
 	MODE="--release"
 fi
 echo "Compiling with $MODE"
-cargo fmt
-cargo clippy
-cargo check
-wasm-pack -v build $MODE --target web
+for CRATE in index; do
+    cd $CRATE
+    cargo fmt
+    cargo clippy
+    cargo check
+    wasm-pack -v build $MODE --target web
+    cd -
+done
 ./format-web-templates.py

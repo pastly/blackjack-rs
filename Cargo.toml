@@ -2,7 +2,7 @@
 members =[
     "bj-core",
     "bj-bin",
-    "bj-web",
+    "bj-web/index",
 ]
 
 [profile.release]

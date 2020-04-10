@@ -1,5 +1,5 @@
 [package]
-name = "bj-web"
+name = "bj-web-index"
 version = "0.1.0"
 authors = ["Matt Traudt <sirmatt@ksu.edu>"]
 edition = "2018"
@@ -11,7 +11,7 @@ crate-type =["cdylib"]
 
 [dependencies]
 wasm-bindgen = "0.2"
-bj-core = { path = "../bj-core", version = "*" }
+bj-core = { path = "../../bj-core", version = "*" }
 rand = { version = "0.7", features = ["wasm-bindgen"] }
 lazy_static = "1.4"
 console_error_panic_hook = "0.1"

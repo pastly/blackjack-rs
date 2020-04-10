@@ -52,6 +52,21 @@ def get_version_str():
     return VERSION_STR
 
 
+def get_google_shit():
+    return '''
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-160379782-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-160379782-1');
+  </script>
+  <script data-ad-client="ca-pub-3834375319956666" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+'''
+
+
 def main(args):
     for in_fname in find_files(args.input):
         out_fname = replace_prefix(in_fname, args.input, args.output)
@@ -68,6 +83,7 @@ def main(args):
             logging.info(f'Considering {in_fname} a text file')
             s = ifd.read()
             s = s.replace('<!-- BJ_TMPL_VERSION -->', get_version_str())
+            s = s.replace('<!-- GOOGLE_SHIT -->', get_google_shit())
             ofd.write(s)
 
 
