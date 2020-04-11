@@ -3,7 +3,10 @@
   <head>
 <!-- GOOGLE_SHIT -->
 
-  <link href=style.css rel=stylesheet>
+  <link href=global.css rel=stylesheet>
+  <link href=mvp.css rel=stylesheet>
+  <link href=index.css rel=stylesheet>
+
   </head>
   <body>
     <!-- Note the usage of `type=module` here as this is an ES6 module -->
@@ -69,52 +72,41 @@
         }
       });
     </script>
-    <div id=content>
-    <div id=player_label>Player:</div><div class=card id=player_cards></div>
-    <div id=dealer_label>Dealer:</div><div class=card id=dealer_cards></div>
+    <!--<header></header>-->
+    <main>
+        Player:<br/>
+        <span class=card id=player_cards></span><br/>
+        Dealer:<br/>
+        <span class=card id=dealer_cards></span><br/>
     <div id=buttons>
-      <input type="button" id=button_hit value="Hit"
-          onClick='on_button_hit();'
-      />
-      <input type="button" id=button_stand value="Stand"
-          onClick='on_button_stand();'
-      />
-      <input type="button" id=button_double value="Double"
-          onClick='on_button_double();'
-      />
-      <input type="button" id=button_split value="sPlit"
-          onClick='on_button_split();'
-      />
-      <input type="button" id=button_surrender value="suRrender"
-          onClick='on_button_surrender();'
-      />
+      <a id=button_hit onClick='on_button_hit(); return false;'/><b>Hit</b></a>
+      <a id=button_stand onClick='on_button_stand(); return false;'/><b>Stand</b></a>
+      <a id=button_double onClick='on_button_double(); return false;'/><b>Double</b></a>
+      <a id=button_split onClick='on_button_split(); return false;'/><b>sPlit</b></a>
+      <a id=button_surrender onClick='on_button_surrender(); return false;'/><b>Surrender</b></a>
     </div> <!-- buttons -->
     <div id=stats>
     Correct: <span id=num_correct>0</span>/<span id=num_seen>0</span><br/>
     This hand: <span id=hand_num_correct>0</span>/<span id=hand_num_seen>0</span><br/>
     Streak: <span id=num_streak>0</span><br/>
-    <input type=button value="Clear stats"
-        onClick='on_button_clear_stats();'
-    />
+    <a onClick='on_button_clear_stats(); return false;' /><i>Clear stats</i></a>
     </div>
     <div id=hint>
     </div> <!-- hint -->
     <div id=strat>
-      <input type=button value="Show/hide strategy card"
-          onClick='document.getElementById("strat_html").classList.toggle("hide");'
-      />
+        <a onClick='document.getElementById("strat_html").classList.toggle("hide"); return false;' /><i>Show/hide strategy card</i></a>
       <br/>
       <div id=strat_html></div> <!-- strat_html -->
     </div> <!-- strat -->
+    </main>
     <footer id=footer>
     <hr>
 Version <!-- BJ_TMPL_VERSION -->
     <br/>
     Bugs? Suggestions? Job offer?<br/>
-    Contact me: <b>sirmatt |at| ksu d0t edu</b><br/>
+    Contact me: <i>sirmatt |at| ksu d0t edu</i><br/>
     Find me on <a href='https://github.com/pastly'>GitHub</a><br/>
     </p>
     </footer> <!-- footer -->
-    </div> <!-- content -->
   </body>
 </html>

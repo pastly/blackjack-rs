@@ -1,0 +1,27 @@
+.card {
+	font-size: 450%;
+    line-height: var(--line-height);
+}
+
+a {
+    color: inherit;
+}
+
+@media screen and (max-width: 1020px) {
+    :root {
+        --line-height: 125%;
+    }
+    body {
+        font-size: 300%;
+    }
+    a b,
+    a em,
+    a i,
+    a strong,
+    button {
+        font-size: 150%;
+    }
+    .card {
+        font-size: 700%;
+    }
+}

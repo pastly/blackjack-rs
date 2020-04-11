@@ -2,6 +2,9 @@
 
 [![Build Status](https://travis-ci.org/pastly/blackjack.svg?branch=master)](https://travis-ci.org/pastly/blackjack)
 
-More needs to be said, obviously. I just want the CI badge to click on.
+This started as some CLI programs to help me train on basic strategy, but it
+has morphed focus into a WASM project.
 
-License not yet decided.
+CLI binaries will be kept around for a while, but I do not currently
+plan on maintaining them very much or necessarily fixing them if they break.
+They probably are already partially broken.
