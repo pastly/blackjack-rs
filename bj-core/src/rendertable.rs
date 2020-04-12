@@ -58,14 +58,14 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
         )
     }
 
-    fn subtable(mut fd: impl Write, v: Vec<&Resp>, label: &str) -> io::Result<()> {
-        let mut player_hand_val = match label {
+    fn subtable(mut fd: impl Write, v: Vec<&Resp>, table_label: &str) -> io::Result<()> {
+        let mut player_hand_val = match table_label {
             "Hard" => 5,
             "Soft" => 13,
             "Pair" => 2,
-            _ => unreachable!("Impossible label"),
+            _ => unreachable!("Impossible table_label"),
         };
-        writeln!(fd, "<h1>{}</h1><table>", label)?;
+        writeln!(fd, "<h1>{}</h1><table>", table_label)?;
         write!(fd, "<tr><td></td>")?;
         for i in 2..=11 {
             let s = if i == 11 {
@@ -104,7 +104,6 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
 
 impl TableRenderer for HTMLTableRenderer {
     fn render(mut fd: impl Write, strat: &BasicStrategy) -> io::Result<()> {
-        //fn render(mut fd: impl Write, table: Table<Resp>) -> io::Result<()> {
         let BasicStrategy { rules, table } = strat;
         let (hards, softs, pairs) = table.as_values_sorted();
         HTMLTableRenderer::header(&mut fd, &rules)?;
