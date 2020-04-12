@@ -244,7 +244,7 @@ sup {
 
 /* Links */
 a {
-    color: var(--color-secondary);
+    color: inherit;
     font-weight: bold;
     text-decoration: none;
 }

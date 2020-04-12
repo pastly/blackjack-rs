@@ -66,6 +66,16 @@ def get_google_shit():
   <script data-ad-client="ca-pub-3834375319956666" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 '''
 
+def get_nav_bar():
+    return '''
+<nav>
+<a href='/index.html'><img alt="BJ logo" id=logo src="/static/logo.png" /></a>
+<ul>
+<li><a href='/index.html'>Game</a></li>
+<li><a href='/custom-card.html'>Customize</a></li>
+</ul>
+</nav>
+'''
 
 def main(args):
     for in_fname in find_files(args.input):
@@ -82,6 +92,7 @@ def main(args):
                 continue
             logging.info(f'Considering {in_fname} a text file')
             s = ifd.read()
+            s = s.replace('<!-- BJ_TMPL_NAV_BAR -->', get_nav_bar())
             s = s.replace('<!-- BJ_TMPL_VERSION -->', get_version_str())
             s = s.replace('<!-- GOOGLE_SHIT -->', get_google_shit())
             ofd.write(s)
