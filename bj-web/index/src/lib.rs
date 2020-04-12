@@ -3,7 +3,7 @@ mod correct_resp;
 
 use bj_core::basicstrategy::rules;
 use bj_core::basicstrategy::BasicStrategy;
-use bj_core::deck::{Card, Deck, Rank, Suit};
+use bj_core::deck::{Card, Rank, Suit};
 use bj_core::hand::Hand;
 use bj_core::playstats::PlayStats;
 use bj_core::rendertable::{HTMLTableRenderer, HTMLTableRendererOpts};
@@ -28,9 +28,6 @@ const LS_KEY_EXISTING_HAND: &str = "bj-hand";
 lazy_static! {
     static ref BS_CARD: Mutex<BasicStrategy> =
         Mutex::new(serde_json::from_reader(bs_data::T1_JSON).unwrap());
-}
-lazy_static! {
-    static ref DECK: Mutex<Deck> = Mutex::new(Deck::new_infinite());
 }
 
 fn new_play_stats() -> Table<PlayStats> {
