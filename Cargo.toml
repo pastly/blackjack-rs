@@ -3,6 +3,8 @@ members =[
     "bj-core",
     "bj-bin",
     "bj-web/index",
+    "bj-web/custom-card",
+    "bj-web/core",
 ]
 
 [profile.release]

@@ -1,0 +1,20 @@
+[package]
+name = "bj-web-core"
+version = "0.1.0"
+authors = ["Matt Traudt <sirmatt@ksu.edu>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+serde = "1.0"
+serde_json = "1.0"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+   'Storage',
+   'Window',
+]

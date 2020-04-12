@@ -1,22 +1,21 @@
-mod bs_data;
 mod button;
 mod correct_resp;
-mod localstorage;
 
 use bj_core::basicstrategy::rules;
 use bj_core::basicstrategy::BasicStrategy;
 use bj_core::deck::{Card, Deck, Rank, Suit};
 use bj_core::hand::Hand;
 use bj_core::playstats::PlayStats;
-use bj_core::rendertable::{HTMLTableRenderer, TableRenderer};
+use bj_core::rendertable::{HTMLTableRenderer, HTMLTableRendererOpts};
 use bj_core::resp::Resp;
 use bj_core::table::Table;
 use bj_core::utils::rand_next_hand;
+use bj_web_core::bs_data;
+use bj_web_core::localstorage::LSVal;
 use button::Button;
 use console_error_panic_hook;
 use correct_resp::is_correct_resp_button;
 use lazy_static::lazy_static;
-use localstorage::LSVal;
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -96,7 +95,10 @@ fn output_resp_table() {
     //let t = Table::new(resps_from_buf(T1_TXT).unwrap()).unwrap();
     let bs_card = &*BS_CARD.lock().unwrap();
     let mut fd: Vec<u8> = vec![];
-    HTMLTableRenderer::render(&mut fd, bs_card).unwrap();
+    let opts = HTMLTableRendererOpts {
+        incl_bs_rules: true,
+    };
+    HTMLTableRenderer::render(&mut fd, bs_card, opts).unwrap();
     let win = web_sys::window().expect("should have a window in this context");
     let doc = win.document().expect("window should have a document");
     doc.get_element_by_id("strat_html")

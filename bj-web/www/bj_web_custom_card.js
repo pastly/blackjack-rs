@@ -1,0 +1,1 @@
+../custom-card/pkg/bj_web_custom_card.js

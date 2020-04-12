@@ -121,7 +121,7 @@ pub mod rules {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct BasicStrategy {
     pub rules: rules::Rules,
     pub table: Table<Resp>,

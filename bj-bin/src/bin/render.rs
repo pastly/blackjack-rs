@@ -1,5 +1,5 @@
 use bj_core::basicstrategy::BasicStrategy;
-use bj_core::rendertable::{HTMLTableRenderer, TXTTableRenderer, TableRenderer};
+use bj_core::rendertable::{HTMLTableRenderer, HTMLTableRendererOpts, TXTTableRenderer};
 use clap::{crate_authors, crate_name, crate_version, App, Arg};
 use serde_json;
 use std::error::Error;
@@ -47,8 +47,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             // safe to unwrap because --output is required
             .open(matches.value_of("output").unwrap())?,
     );
+    let html_opts = HTMLTableRendererOpts {
+        incl_bs_rules: true,
+    };
     match matches.value_of("format").unwrap() {
-        "html" => HTMLTableRenderer::render(&mut fd, &bs_card)?,
+        "html" => HTMLTableRenderer::render(&mut fd, &bs_card, html_opts)?,
         "txt" => TXTTableRenderer::render(&mut fd, &bs_card)?,
         _ => unimplemented!(),
     };

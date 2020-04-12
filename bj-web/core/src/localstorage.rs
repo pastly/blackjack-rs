@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use web_sys::Storage;
 
+pub mod lskeys {
+    pub const LS_KEY_BS_CARD: &str = "bj-current-bs-card";
+}
+
 pub struct LSVal<T>
 where
     T: Serialize,

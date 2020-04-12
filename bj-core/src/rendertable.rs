@@ -2,14 +2,14 @@ use crate::basicstrategy::{rules, BasicStrategy};
 use crate::resp::Resp;
 use std::io::{self, Write};
 
-pub trait TableRenderer {
-    fn render(fd: impl Write, strat: &BasicStrategy) -> io::Result<()>;
+pub struct HTMLTableRendererOpts {
+    pub incl_bs_rules: bool,
 }
 
 pub struct HTMLTableRenderer;
 
 impl HTMLTableRenderer {
-    fn header(mut fd: impl Write, bs_rules: &rules::Rules) -> io::Result<()> {
+    fn header(mut fd: impl Write, bs_rules: &rules::Rules, opts: &HTMLTableRendererOpts) -> io::Result<()> {
         writeln!(
             fd,
             "
@@ -27,6 +27,12 @@ impl HTMLTableRenderer {
 .split     {{ background-color: #00ff00; }}
 .surrender {{ background-color: #dddddd; }}
 </style>
+"
+        )?;
+        if opts.incl_bs_rules {
+            writeln!(
+                fd,
+                "
 <h1>Basic Strategy</h1>
 <table>
 <tr><td>Decks</td><td>{decks}</td></tr>
@@ -36,12 +42,14 @@ impl HTMLTableRenderer {
 <tr><td>Dealer peek</td><td>{peek_bj}</td></tr>
 </table>
 ",
-            decks = bs_rules.decks,
-            soft_17 = bs_rules.hit_soft_17,
-            das = bs_rules.double_after_split,
-            peek_bj = bs_rules.peek_bj,
-            sur = bs_rules.surrender,
-        )
+                decks = bs_rules.decks,
+                soft_17 = bs_rules.hit_soft_17,
+                das = bs_rules.double_after_split,
+                peek_bj = bs_rules.peek_bj,
+                sur = bs_rules.surrender,
+            )?;
+        }
+Ok(())
     }
 
     fn footer(mut fd: impl Write) -> io::Result<()> {
@@ -100,17 +108,15 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
         writeln!(fd, "</tr></table>")?;
         Ok(())
     }
-}
 
-impl TableRenderer for HTMLTableRenderer {
-    fn render(mut fd: impl Write, strat: &BasicStrategy) -> io::Result<()> {
+    pub fn render(mut fd: impl Write, strat: &BasicStrategy, opts: HTMLTableRendererOpts) -> io::Result<()> {
         let BasicStrategy { rules, table } = strat;
         let (hards, softs, pairs) = table.as_values_sorted();
-        HTMLTableRenderer::header(&mut fd, &rules)?;
-        HTMLTableRenderer::subtable(&mut fd, hards, "Hard")?;
-        HTMLTableRenderer::subtable(&mut fd, softs, "Soft")?;
-        HTMLTableRenderer::subtable(&mut fd, pairs, "Pair")?;
-        HTMLTableRenderer::footer(&mut fd)?;
+        Self::header(&mut fd, &rules, &opts)?;
+        Self::subtable(&mut fd, hards, "Hard")?;
+        Self::subtable(&mut fd, softs, "Soft")?;
+        Self::subtable(&mut fd, pairs, "Pair")?;
+        Self::footer(&mut fd)?;
         Ok(())
     }
 }
@@ -157,18 +163,16 @@ impl TXTTableRenderer {
         }
         Ok(())
     }
-}
 
-impl TableRenderer for TXTTableRenderer {
-    fn render(mut fd: impl Write, strat: &BasicStrategy) -> io::Result<()> {
+    pub fn render(mut fd: impl Write, strat: &BasicStrategy) -> io::Result<()> {
         let BasicStrategy { rules, table } = strat;
         let (hards, softs, pairs) = table.as_values_sorted();
-        TXTTableRenderer::header(&mut fd, &rules)?;
-        TXTTableRenderer::subtable(&mut fd, hards, "Hard")?;
+        Self::header(&mut fd, &rules)?;
+        Self::subtable(&mut fd, hards, "Hard")?;
         writeln!(fd)?;
-        TXTTableRenderer::subtable(&mut fd, softs, "Soft")?;
+        Self::subtable(&mut fd, softs, "Soft")?;
         writeln!(fd)?;
-        TXTTableRenderer::subtable(&mut fd, pairs, "Pair")?;
+        Self::subtable(&mut fd, pairs, "Pair")?;
         writeln!(fd)?;
         Ok(())
     }
