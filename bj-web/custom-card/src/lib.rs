@@ -1,6 +1,8 @@
 use bj_core::basicstrategy::BasicStrategy;
+use bj_core::hand::HandType;
 use bj_core::rendertable::{HTMLTableRenderer, HTMLTableRendererOpts};
 use bj_core::resp::Resp;
+use bj_core::table::{dealer_card_from_desc, player_hand_from_desc, GameDesc};
 use bj_web_core::bs_data;
 use bj_web_core::localstorage::{lskeys, LSVal};
 use console_error_panic_hook;
@@ -102,8 +104,44 @@ pub fn run() -> Result<(), JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn onclick_cell(tbl: &str, player: u8, dealer: u8) {
-    log(&format!("asdf {} {} {}", tbl, player, dealer));
+pub fn onclick_cell(tbl: &str, mut player: u8, dealer: u8) {
+    let resp: LSVal<Option<Resp>> = LSVal::from_ls_or_default(LS_KEY_SELECTED_RESP, None);
+    if resp.is_none() {
+        log("Should have had a selected response at this point, but don't");
+        return;
+    }
+    let new = resp.unwrap();
+    let (key_player, key_dealer) = {
+        let hand_type = match tbl {
+            "hard" => HandType::Hard,
+            "soft" => HandType::Soft,
+            "pair" => HandType::Pair,
+            _ => panic!(format!("Impossible hand type {}", tbl)),
+        };
+        if tbl == "pair" {
+            player *= 2;
+        }
+        let desc = GameDesc {
+            hand: hand_type,
+            player,
+            dealer,
+        };
+        (
+            player_hand_from_desc(desc).unwrap(),
+            dealer_card_from_desc(desc).unwrap(),
+        )
+    };
+    let mut bs = {
+        let def: BasicStrategy = serde_json::from_reader(bs_data::T1_JSON).unwrap();
+        LSVal::from_ls_or_default(lskeys::LS_KEY_BS_CARD, def)
+    };
+    let old = bs.table.get(&key_player, key_dealer).unwrap();
+    log(&format!(
+        "Changing {} {}/{} from {} to {}",
+        tbl, player, dealer, old, new
+    ));
+    bs.table.update(&key_player, key_dealer, new).unwrap();
+    render_bs_card(&*bs);
 }
 
 #[wasm_bindgen]
