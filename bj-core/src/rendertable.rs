@@ -97,7 +97,11 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
         let mut dealer_val = 2;
         for (i, resp) in v.iter().enumerate() {
             if i % 10 == 0 {
-                let s = player_hand_val.to_string();
+                let s = if player_hand_val == 11 && table_label == "Pair" {
+                    "A".to_string()
+                } else {
+                    player_hand_val.to_string()
+                };
                 writeln!(fd, "<th>{}</th>", s)?;
             }
             let (class, label) = match resp {
