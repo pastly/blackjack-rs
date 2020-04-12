@@ -96,9 +96,6 @@ pub fn run() -> Result<(), JsValue> {
         *resp = Some(Resp::Hit);
         set_border_selected_resp(resp.unwrap());
     }
-    //log("Helo there");
-    //log(lskeys::LS_KEY_BS_CARD);
-    //log(&format!("{:?}", *bs));
     render_bs_card(&*bs);
     Ok(())
 }
