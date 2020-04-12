@@ -69,10 +69,10 @@ def get_google_shit():
 def get_nav_bar():
     return '''
 <nav>
-<a href='/index.html'><img alt="BJ logo" id=logo src="/static/logo.png" /></a>
+<a href='index.html'><img alt="BJ logo" id=logo src="static/logo.png" /></a>
 <ul>
-<li><a href='/index.html'>Game</a></li>
-<li><a href='/custom-card.html'>Customize</a></li>
+<li><a href='index.html'>Game</a></li>
+<li><a href='custom-card.html'>Customize</a></li>
 </ul>
 </nav>
 '''
