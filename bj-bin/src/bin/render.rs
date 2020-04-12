@@ -49,6 +49,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
     let html_opts = HTMLTableRendererOpts {
         incl_bs_rules: true,
+        cell_onclick_cb: None,
     };
     match matches.value_of("format").unwrap() {
         "html" => HTMLTableRenderer::render(&mut fd, &bs_card, html_opts)?,

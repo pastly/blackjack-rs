@@ -1,0 +1,14 @@
+table#cell_color_opts {
+    border: none;
+}
+
+table#cell_color_opts thead th:first-child,
+table#cell_color_opts tr td:first-child {
+    text-align: inherit;
+}
+
+table#cell_color_opts thead th,
+table#cell_color_opts tr td {
+    border: 1px solid var(--color-bg);
+    border-radius: var(--border-radius);
+}

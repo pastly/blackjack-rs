@@ -4,12 +4,17 @@ use std::io::{self, Write};
 
 pub struct HTMLTableRendererOpts {
     pub incl_bs_rules: bool,
+    pub cell_onclick_cb: Option<String>,
 }
 
 pub struct HTMLTableRenderer;
 
 impl HTMLTableRenderer {
-    fn header(mut fd: impl Write, bs_rules: &rules::Rules, opts: &HTMLTableRendererOpts) -> io::Result<()> {
+    fn header(
+        mut fd: impl Write,
+        bs_rules: &rules::Rules,
+        opts: &HTMLTableRendererOpts,
+    ) -> io::Result<()> {
         writeln!(
             fd,
             "
@@ -49,7 +54,7 @@ impl HTMLTableRenderer {
                 sur = bs_rules.surrender,
             )?;
         }
-Ok(())
+        Ok(())
     }
 
     fn footer(mut fd: impl Write) -> io::Result<()> {
@@ -66,7 +71,12 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
         )
     }
 
-    fn subtable(mut fd: impl Write, v: Vec<&Resp>, table_label: &str) -> io::Result<()> {
+    fn subtable(
+        mut fd: impl Write,
+        v: Vec<&Resp>,
+        table_label: &str,
+        opts: &HTMLTableRendererOpts,
+    ) -> io::Result<()> {
         let mut player_hand_val = match table_label {
             "Hard" => 5,
             "Soft" => 13,
@@ -84,11 +94,11 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
             writeln!(fd, "<th>{}</th>", s)?;
         }
         write!(fd, "</tr><tr>")?;
+        let mut dealer_val = 2;
         for (i, resp) in v.iter().enumerate() {
             if i % 10 == 0 {
                 let s = player_hand_val.to_string();
                 writeln!(fd, "<th>{}</th>", s)?;
-                player_hand_val += 1;
             }
             let (class, label) = match resp {
                 Resp::Hit => ("hit", "H"),
@@ -100,22 +110,43 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
                 Resp::SurrenderElseStand => ("surrender", "Rs"),
                 Resp::SurrenderElseSplit => ("surrender", "Rp"),
             };
-            writeln!(fd, "<td class={}>{}</td>", class, label)?;
+            let onclick_fn = match &opts.cell_onclick_cb {
+                Some(fn_name) => format!(
+                    "{}(\"{}\", {}, {})",
+                    fn_name,
+                    table_label.to_lowercase(),
+                    player_hand_val,
+                    dealer_val
+                ),
+                None => "".to_string(),
+            };
+            writeln!(
+                fd,
+                "<td class={} onclick='{}'>{}</td>",
+                class, onclick_fn, label,
+            )?;
+            dealer_val += 1;
             if i % 10 == 9 {
                 writeln!(fd, "</tr><tr>")?;
+                player_hand_val += 1;
+                dealer_val = 2;
             }
         }
         writeln!(fd, "</tr></table>")?;
         Ok(())
     }
 
-    pub fn render(mut fd: impl Write, strat: &BasicStrategy, opts: HTMLTableRendererOpts) -> io::Result<()> {
+    pub fn render(
+        mut fd: impl Write,
+        strat: &BasicStrategy,
+        opts: HTMLTableRendererOpts,
+    ) -> io::Result<()> {
         let BasicStrategy { rules, table } = strat;
         let (hards, softs, pairs) = table.as_values_sorted();
         Self::header(&mut fd, &rules, &opts)?;
-        Self::subtable(&mut fd, hards, "Hard")?;
-        Self::subtable(&mut fd, softs, "Soft")?;
-        Self::subtable(&mut fd, pairs, "Pair")?;
+        Self::subtable(&mut fd, hards, "Hard", &opts)?;
+        Self::subtable(&mut fd, softs, "Soft", &opts)?;
+        Self::subtable(&mut fd, pairs, "Pair", &opts)?;
         Self::footer(&mut fd)?;
         Ok(())
     }

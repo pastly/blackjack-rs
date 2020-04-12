@@ -97,6 +97,7 @@ fn output_resp_table() {
     let mut fd: Vec<u8> = vec![];
     let opts = HTMLTableRendererOpts {
         incl_bs_rules: true,
+        cell_onclick_cb: None,
     };
     HTMLTableRenderer::render(&mut fd, bs_card, opts).unwrap();
     let win = web_sys::window().expect("should have a window in this context");
