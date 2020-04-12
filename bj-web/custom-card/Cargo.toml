@@ -22,9 +22,10 @@ version = "0.3"
 features = [
 #   'CssStyleDeclaration',
    'Document',
-#   'DomTokenList',
+   'DomTokenList',
    'Element',
    'HtmlElement',
+   'HtmlCollection',
 #   'Storage',
    'Window',
 ]

@@ -6,7 +6,9 @@ use bj_web_core::localstorage::{lskeys, LSVal};
 use console_error_panic_hook;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::HtmlElement;
+use web_sys::{Element, HtmlElement};
+
+const LS_KEY_SELECTED_RESP: &str = "bj-custom-card-selected-resp";
 
 #[wasm_bindgen]
 extern "C" {
@@ -44,14 +46,57 @@ fn render_bs_card(bs: &BasicStrategy) {
         .set_inner_html(&String::from_utf8(buf).unwrap());
 }
 
+fn set_border_selected_resp(resp: Resp) {
+    let cell_idx = match resp {
+        Resp::Hit => 0,
+        Resp::Stand => 1,
+        Resp::DoubleElseHit => 2,
+        Resp::DoubleElseStand => 3,
+        Resp::Split => 4,
+        Resp::SurrenderElseHit => 5,
+        Resp::SurrenderElseStand => 6,
+        Resp::SurrenderElseSplit => 7,
+    };
+    let win = web_sys::window().expect("should have a window in this context");
+    let doc = win.document().expect("window should have a document");
+    let cells = doc
+        .get_element_by_id("cell_color_opts")
+        .expect("shoudl have cell_color_opts")
+        .dyn_ref::<Element>()
+        .expect("cell_color_opts should be HtmlElement")
+        .get_elements_by_tag_name("td");
+    for i in 0..cells.length() {
+        let class_list = cells
+            .item(i)
+            .unwrap()
+            .dyn_ref::<Element>()
+            .expect("cell should be Element")
+            .class_list();
+        if i == cell_idx {
+            class_list
+                .add_1("selected")
+                .expect("unable to add selected class");
+        } else {
+            class_list
+                .remove_1("selected")
+                .expect("unable to remove selected class");
+        }
+    }
+}
+
 #[wasm_bindgen(start)]
 pub fn run() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
     let def: BasicStrategy = serde_json::from_reader(bs_data::T1_JSON).unwrap();
     let bs: LSVal<BasicStrategy> = LSVal::from_ls_or_default(lskeys::LS_KEY_BS_CARD, def);
-    log("Helo there");
-    log(lskeys::LS_KEY_BS_CARD);
-    log(&format!("{:?}", *bs));
+    {
+        let mut resp = LSVal::from_ls_or_default(LS_KEY_SELECTED_RESP, None);
+        *resp = Some(Resp::Hit);
+        set_border_selected_resp(resp.unwrap());
+    }
+    //log("Helo there");
+    //log(lskeys::LS_KEY_BS_CARD);
+    //log(&format!("{:?}", *bs));
     render_bs_card(&*bs);
     Ok(())
 }
@@ -63,6 +108,12 @@ pub fn onclick_cell(tbl: &str, player: u8, dealer: u8) {
 
 #[wasm_bindgen]
 pub fn onclick_select_resp(resp_str: &str) {
-    let resp = resp_from_str(resp_str).unwrap();
-    log(&format!("{:?}", resp));
+    let mut stored: LSVal<Option<Resp>> = LSVal::from_ls_or_default(LS_KEY_SELECTED_RESP, None);
+    let new = Some(resp_from_str(resp_str).unwrap());
+    log(&format!(
+        "Changing selected resp from {:?} to {:?}",
+        *stored, new,
+    ));
+    *stored = new;
+    set_border_selected_resp(new.unwrap());
 }
