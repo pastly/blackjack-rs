@@ -12,7 +12,7 @@ pub struct HTMLTableRenderer;
 impl HTMLTableRenderer {
     fn header(
         mut fd: impl Write,
-        bs_rules: &rules::Rules,
+        bs_rules: &Option<rules::Rules>,
         opts: &HTMLTableRendererOpts,
     ) -> io::Result<()> {
         writeln!(
@@ -35,9 +35,10 @@ impl HTMLTableRenderer {
 "
         )?;
         if opts.incl_bs_rules {
-            writeln!(
-                fd,
-                "
+            if let Some(rules) = bs_rules {
+                writeln!(
+                    fd,
+                    "
 <h1>Basic Strategy</h1>
 <table>
 <tr><td>Decks</td><td>{decks}</td></tr>
@@ -46,13 +47,16 @@ impl HTMLTableRenderer {
 <tr><td>Surrender</td><td>{sur}</td></tr>
 <tr><td>Dealer peek</td><td>{peek_bj}</td></tr>
 </table>
-",
-                decks = bs_rules.decks,
-                soft_17 = bs_rules.hit_soft_17,
-                das = bs_rules.double_after_split,
-                peek_bj = bs_rules.peek_bj,
-                sur = bs_rules.surrender,
-            )?;
+    ",
+                    decks = rules.decks,
+                    soft_17 = rules.hit_soft_17,
+                    das = rules.double_after_split,
+                    peek_bj = rules.peek_bj,
+                    sur = rules.surrender,
+                )?;
+            } else {
+                writeln!(fd, "<h1>Custom Basic Strategy</h1>")?;
+            }
         }
         Ok(())
     }
@@ -147,7 +151,7 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
     ) -> io::Result<()> {
         let BasicStrategy { rules, table } = strat;
         let (hards, softs, pairs) = table.as_values_sorted();
-        Self::header(&mut fd, &rules, &opts)?;
+        Self::header(&mut fd, rules, &opts)?;
         Self::subtable(&mut fd, hards, "Hard", &opts)?;
         Self::subtable(&mut fd, softs, "Soft", &opts)?;
         Self::subtable(&mut fd, pairs, "Pair", &opts)?;
@@ -159,23 +163,27 @@ Source: <a id=strat_source href='https://wizardofodds.com/games/blackjack/strate
 pub struct TXTTableRenderer;
 
 impl TXTTableRenderer {
-    fn header(mut fd: impl Write, bs_rules: &rules::Rules) -> io::Result<()> {
-        writeln!(
-            fd,
-            "
+    fn header(mut fd: impl Write, bs_rules: &Option<rules::Rules>) -> io::Result<()> {
+        if let Some(rules) = bs_rules {
+            writeln!(
+                fd,
+                "
 # Decks:              {decks}
 # Soft 17:            {soft_17}
 # Double after split: {das}
 # Surrender:          {sur}
 # Dealer peek:        {peek_bj}
 # Source: https://wizardofodds.com/games/blackjack/strategy/calculator/
-",
-            decks = bs_rules.decks,
-            soft_17 = bs_rules.hit_soft_17,
-            das = bs_rules.double_after_split,
-            sur = bs_rules.surrender,
-            peek_bj = bs_rules.peek_bj,
-        )
+    ",
+                decks = rules.decks,
+                soft_17 = rules.hit_soft_17,
+                das = rules.double_after_split,
+                sur = rules.surrender,
+                peek_bj = rules.peek_bj,
+            )
+        } else {
+            writeln!(fd, "# Custom Basic Strategy")
+        }
     }
 
     fn subtable(mut fd: impl Write, v: Vec<&Resp>, label: &str) -> io::Result<()> {

@@ -174,17 +174,21 @@ fn update_stats(old_hand: (&Hand, Card), old_was_correct: bool) {
     *streak = if old_was_correct { *streak + 1 } else { 0 };
 }
 
-fn update_buttons(hand: (&Hand, Card), rules: &rules::Rules) {
+fn update_buttons(hand: (&Hand, Card), rules: &Option<rules::Rules>) {
     let win = web_sys::window().expect("should have a window in this context");
     let doc = win.document().expect("window should have a document");
     let hit_enabled = true;
     let stand_enabled = true;
     let double_enabled = hand.0.can_double();
     let split_enabled = hand.0.can_split();
-    let surrender_enabled = match rules.surrender {
-        rules::Surrender::No => false,
-        rules::Surrender::Yes => true,
-        rules::Surrender::NotAce => hand.1.rank() != Rank::RA,
+    let surrender_enabled = if let Some(rules) = rules {
+        match rules.surrender {
+            rules::Surrender::No => false,
+            rules::Surrender::Yes => true,
+            rules::Surrender::NotAce => hand.1.rank() != Rank::RA,
+        }
+    } else {
+        true
     };
     for (id, enabled) in [
         ("button_hit", hit_enabled),

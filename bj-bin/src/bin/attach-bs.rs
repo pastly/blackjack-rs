@@ -103,7 +103,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         peek_bj: peek.into(),
         surrender,
     };
-    let bs: BasicStrategy = (rules, table).into();
+    let bs: BasicStrategy = (Some(rules), table).into();
     let fd = OpenOptions::new()
         .write(true)
         .create(true)

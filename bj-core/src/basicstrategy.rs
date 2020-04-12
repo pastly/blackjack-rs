@@ -123,18 +123,18 @@ pub mod rules {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BasicStrategy {
-    pub rules: rules::Rules,
+    pub rules: Option<rules::Rules>,
     pub table: Table<Resp>,
 }
 
 impl BasicStrategy {
-    pub fn new(rules: rules::Rules, table: Table<Resp>) -> Self {
+    pub fn new(rules: Option<rules::Rules>, table: Table<Resp>) -> Self {
         Self { rules, table }
     }
 }
 
-impl From<(rules::Rules, Table<Resp>)> for BasicStrategy {
-    fn from((rules, table): (rules::Rules, Table<Resp>)) -> Self {
+impl From<(Option<rules::Rules>, Table<Resp>)> for BasicStrategy {
+    fn from((rules, table): (Option<rules::Rules>, Table<Resp>)) -> Self {
         Self::new(rules, table)
     }
 }
