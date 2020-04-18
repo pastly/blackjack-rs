@@ -11,6 +11,7 @@ where
 {
     key: String,
     val: T,
+    is_session: bool,
 }
 
 impl<T> LSVal<T>
@@ -18,27 +19,30 @@ where
     T: Serialize,
     for<'de> T: Deserialize<'de>,
 {
-    pub fn from_ls_or_default(key: &str, def: T) -> Self {
-        match ls_get(key) {
+    pub fn from_ls_or_default(is_session: bool, key: &str, def: T) -> Self {
+        match ls_get(is_session, key) {
             None => {
-                ls_set(key, &def);
+                ls_set(is_session, key, &def);
                 Self {
                     key: key.to_owned(),
                     val: def,
+                    is_session,
                 }
             }
             Some(v) => Self {
                 key: key.to_owned(),
                 val: v,
+                is_session,
             },
         }
     }
 
-    pub fn from_ls(key: &str) -> Option<Self> {
-        if let Some(v) = ls_get(key) {
+    pub fn from_ls(is_session: bool, key: &str) -> Option<Self> {
+        if let Some(v) = ls_get(is_session, key) {
             Some(Self {
                 key: key.to_owned(),
                 val: v,
+                is_session,
             })
         } else {
             None
@@ -75,32 +79,41 @@ where
     T: Serialize,
 {
     fn drop(&mut self) {
-        ls_set(&self.key, &self.val);
+        ls_set(self.is_session, &self.key, &self.val);
     }
 }
 
-fn ls() -> Storage {
+fn ls(is_session: bool) -> Storage {
     let win = web_sys::window().expect("should have a window in this context");
-    win.local_storage()
-        .expect("Err getting local_storage")
-        .expect("None getting local_storage")
+    if is_session {
+        win.session_storage()
+            .expect("Err getting session_storage")
+            .expect("None getting session_storage")
+    } else {
+        win.local_storage()
+            .expect("Err getting local_storage")
+            .expect("None getting local_storage")
+    }
 }
 
-fn ls_get<T>(key: &str) -> Option<T>
+fn ls_get<T>(is_session: bool, key: &str) -> Option<T>
 where
     for<'de> T: Deserialize<'de>,
 {
-    if let Some(val) = ls().get(key).expect("Err getting from local storage") {
+    if let Some(val) = ls(is_session)
+        .get(key)
+        .expect("Err getting from local storage")
+    {
         serde_json::from_str(&val).ok()
     } else {
         None
     }
 }
 
-fn ls_set<T>(key: &str, val: &T)
+fn ls_set<T>(is_session: bool, key: &str, val: &T)
 where
     T: Serialize,
 {
     let val = serde_json::to_string(&val).unwrap();
-    ls().set(key, &val).unwrap()
+    ls(is_session).set(key, &val).unwrap()
 }

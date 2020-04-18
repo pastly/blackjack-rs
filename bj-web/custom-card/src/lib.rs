@@ -11,6 +11,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{Element, HtmlElement};
 
 const LS_KEY_SELECTED_RESP: &str = "bj-custom-card-selected-resp";
+const USE_SESSION_STORAGE: bool = false;
 
 #[wasm_bindgen]
 extern "C" {
@@ -90,9 +91,10 @@ fn set_border_selected_resp(resp: Resp) {
 pub fn run() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
     let def: BasicStrategy = serde_json::from_reader(bs_data::T1_JSON).unwrap();
-    let bs: LSVal<BasicStrategy> = LSVal::from_ls_or_default(lskeys::LS_KEY_BS_CARD, def);
+    let bs: LSVal<BasicStrategy> =
+        LSVal::from_ls_or_default(USE_SESSION_STORAGE, lskeys::LS_KEY_BS_CARD, def);
     {
-        let mut resp = LSVal::from_ls_or_default(LS_KEY_SELECTED_RESP, None);
+        let mut resp = LSVal::from_ls_or_default(USE_SESSION_STORAGE, LS_KEY_SELECTED_RESP, None);
         *resp = Some(Resp::Hit);
         set_border_selected_resp(resp.unwrap());
     }
@@ -102,7 +104,8 @@ pub fn run() -> Result<(), JsValue> {
 
 #[wasm_bindgen]
 pub fn onclick_cell(tbl: &str, mut player: u8, dealer: u8) {
-    let resp: LSVal<Option<Resp>> = LSVal::from_ls_or_default(LS_KEY_SELECTED_RESP, None);
+    let resp: LSVal<Option<Resp>> =
+        LSVal::from_ls_or_default(USE_SESSION_STORAGE, LS_KEY_SELECTED_RESP, None);
     if resp.is_none() {
         log("Should have had a selected response at this point, but don't");
         return;
@@ -130,7 +133,7 @@ pub fn onclick_cell(tbl: &str, mut player: u8, dealer: u8) {
     };
     let mut bs = {
         let def: BasicStrategy = serde_json::from_reader(bs_data::T1_JSON).unwrap();
-        LSVal::from_ls_or_default(lskeys::LS_KEY_BS_CARD, def)
+        LSVal::from_ls_or_default(USE_SESSION_STORAGE, lskeys::LS_KEY_BS_CARD, def)
     };
     let old = bs.table.get(&key_player, key_dealer).unwrap();
     log(&format!(
@@ -143,7 +146,8 @@ pub fn onclick_cell(tbl: &str, mut player: u8, dealer: u8) {
 
 #[wasm_bindgen]
 pub fn onclick_select_resp(resp_str: &str) {
-    let mut stored: LSVal<Option<Resp>> = LSVal::from_ls_or_default(LS_KEY_SELECTED_RESP, None);
+    let mut stored: LSVal<Option<Resp>> =
+        LSVal::from_ls_or_default(USE_SESSION_STORAGE, LS_KEY_SELECTED_RESP, None);
     let new = Some(resp_from_str(resp_str).unwrap());
     log(&format!(
         "Changing selected resp from {:?} to {:?}",

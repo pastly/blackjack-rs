@@ -22,6 +22,7 @@ use web_sys::{Element, HtmlElement};
 const LS_KEY_TABLE_PLAYSTATS: &str = "bj-table-playstats";
 const LS_KEY_STREAK: &str = "bj-streak";
 const LS_KEY_EXISTING_HAND: &str = "bj-hand";
+const USE_SESSION_STORAGE: bool = false;
 
 fn new_play_stats() -> Table<PlayStats> {
     Table::new(std::iter::repeat(PlayStats::new()).take(360)).unwrap()
@@ -70,14 +71,26 @@ extern "C" {
 #[wasm_bindgen(start)]
 pub fn run() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
-    let stats = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
-    let (player_hand, dealer_card) =
-        &*LSVal::from_ls_or_default(LS_KEY_EXISTING_HAND, rand_next_hand(&stats));
-    let stat_table = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
-    let streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
+    let stats = LSVal::from_ls_or_default(
+        USE_SESSION_STORAGE,
+        LS_KEY_TABLE_PLAYSTATS,
+        new_play_stats(),
+    );
+    let (player_hand, dealer_card) = &*LSVal::from_ls_or_default(
+        USE_SESSION_STORAGE,
+        LS_KEY_EXISTING_HAND,
+        rand_next_hand(&stats),
+    );
+    let stat_table = LSVal::from_ls_or_default(
+        USE_SESSION_STORAGE,
+        LS_KEY_TABLE_PLAYSTATS,
+        new_play_stats(),
+    );
+    let streak = LSVal::from_ls_or_default(USE_SESSION_STORAGE, LS_KEY_STREAK, 0);
     output_hand(player_hand, *dealer_card);
     {
-        let bs_card = LSVal::from_ls_or_default(lskeys::LS_KEY_BS_CARD, def_bs_card());
+        let bs_card =
+            LSVal::from_ls_or_default(USE_SESSION_STORAGE, lskeys::LS_KEY_BS_CARD, def_bs_card());
         update_buttons((player_hand, *dealer_card), &bs_card.rules);
     }
     output_stats((player_hand, *dealer_card), &(*stat_table), *streak);
@@ -86,7 +99,8 @@ pub fn run() -> Result<(), JsValue> {
 }
 
 fn output_resp_table() {
-    let bs_card = LSVal::from_ls_or_default(lskeys::LS_KEY_BS_CARD, def_bs_card());
+    let bs_card =
+        LSVal::from_ls_or_default(USE_SESSION_STORAGE, lskeys::LS_KEY_BS_CARD, def_bs_card());
     let mut fd: Vec<u8> = vec![];
     let opts = HTMLTableRendererOpts {
         incl_bs_rules: true,
@@ -157,8 +171,12 @@ fn output_stats(current_hand: (&Hand, Card), stat_table: &Table<PlayStats>, stre
 }
 
 fn update_stats(old_hand: (&Hand, Card), old_was_correct: bool) {
-    let mut stat_table = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
-    let mut streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
+    let mut stat_table = LSVal::from_ls_or_default(
+        USE_SESSION_STORAGE,
+        LS_KEY_TABLE_PLAYSTATS,
+        new_play_stats(),
+    );
+    let mut streak = LSVal::from_ls_or_default(USE_SESSION_STORAGE, LS_KEY_STREAK, 0);
     let mut old_stat = stat_table.get(&old_hand.0, old_hand.1).unwrap();
     old_stat.inc(old_was_correct);
     stat_table
@@ -212,18 +230,20 @@ fn update_buttons(hand: (&Hand, Card), rules: &Option<rules::Rules>) {
 
 fn handle_button(btn: Button) {
     // the (player_hand, dealer_card) currently on the screen
-    let mut hand: LSVal<(Hand, Card)> = LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
+    let mut hand: LSVal<(Hand, Card)> =
+        LSVal::from_ls(USE_SESSION_STORAGE, LS_KEY_EXISTING_HAND).unwrap();
     // the correct response to this (player_hand, dealer_card). We store the bool is_correct as
     // well because whether or not the response is correct is more complex than button == resp: if
     // the correct Resp is DoubleElseHit (or its cousins) then it is not enough to simply check if
     // the Double button was pressed.
-    let bs_card = LSVal::from_ls_or_default(lskeys::LS_KEY_BS_CARD, def_bs_card());
+    let bs_card =
+        LSVal::from_ls_or_default(USE_SESSION_STORAGE, lskeys::LS_KEY_BS_CARD, def_bs_card());
     let correct: Resp = bs_card.table.get(&hand.0, hand.1).unwrap();
     let is_correct = is_correct_resp_button(&btn, correct, (&hand.0, hand.1));
     // grab a copy of what the user's existing streak is. If they get the hand wrong, we will want
     // to display this to them and we will soon be clearing out the localstorage copy of their
     // streak
-    let old_streak = *LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
+    let old_streak = *LSVal::from_ls_or_default(USE_SESSION_STORAGE, LS_KEY_STREAK, 0);
     // update localstorage state for player statistics
     update_stats((&hand.0, hand.1), is_correct);
     // display the "hint": player got it right, or they got it wrong and ___ is correct and ___ was
@@ -231,13 +251,14 @@ fn handle_button(btn: Button) {
     set_hint(&btn, correct, (&hand.0, hand.1), is_correct, old_streak);
     // get a LSVal-wrapped ref to their stats so that we can (1) generate an appropriate next hand
     // for them and (2) tell them what their stats are for the new hand
-    let stats: LSVal<Table<PlayStats>> = LSVal::from_ls(LS_KEY_TABLE_PLAYSTATS).unwrap();
+    let stats: LSVal<Table<PlayStats>> =
+        LSVal::from_ls(USE_SESSION_STORAGE, LS_KEY_TABLE_PLAYSTATS).unwrap();
     let _ = hand.swap(rand_next_hand(&*stats)); // (1)
     output_hand(&hand.0, hand.1);
     update_buttons((&hand.0, hand.1), &bs_card.rules);
     // update_stats() will have either incremented their streak or reset it to zero, so we need tor
     // refetch their streak from localstorage
-    let new_streak = *LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
+    let new_streak = *LSVal::from_ls_or_default(USE_SESSION_STORAGE, LS_KEY_STREAK, 0);
     output_stats((&hand.0, hand.1), &(*stats), new_streak); // (2)
 
     fn set_hint(given: &Button, correct: Resp, hand: (&Hand, Card), is_correct: bool, streak: u32) {
@@ -286,12 +307,16 @@ pub fn on_button_surrender() {
 
 #[wasm_bindgen]
 pub fn on_button_clear_stats() {
-    let mut stat_table = LSVal::from_ls_or_default(LS_KEY_TABLE_PLAYSTATS, new_play_stats());
-    let mut streak = LSVal::from_ls_or_default(LS_KEY_STREAK, 0);
+    let mut stat_table = LSVal::from_ls_or_default(
+        USE_SESSION_STORAGE,
+        LS_KEY_TABLE_PLAYSTATS,
+        new_play_stats(),
+    );
+    let mut streak = LSVal::from_ls_or_default(USE_SESSION_STORAGE, LS_KEY_STREAK, 0);
     for v in stat_table.values_mut() {
         *v = PlayStats::new();
     }
     *streak = 0;
-    let (player, dealer) = &*LSVal::from_ls(LS_KEY_EXISTING_HAND).unwrap();
+    let (player, dealer) = &*LSVal::from_ls(USE_SESSION_STORAGE, LS_KEY_EXISTING_HAND).unwrap();
     output_stats((&player, *dealer), &(*stat_table), *streak);
 }

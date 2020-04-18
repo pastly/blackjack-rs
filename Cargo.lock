@@ -69,7 +69,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "bj-web-index"
+name = "bj-web-free-play"
 version = "0.1.0"
 dependencies = [
  "bj-core 0.1.0",
