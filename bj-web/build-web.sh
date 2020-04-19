@@ -16,4 +16,4 @@ for CRATE_CARGO in ./*/Cargo.toml; do
     wasm-pack -v build $MODE --target web
     cd -
 done
-./format-web-templates.py
+# ./format-web-templates.py
