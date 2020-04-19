@@ -2,7 +2,7 @@
 members =[
     "bj-core",
     "bj-bin",
-    "bj-web/free-play",
+    "bj-web/basic-strategy",
     "bj-web/custom-card",
     "bj-web/core",
 ]
