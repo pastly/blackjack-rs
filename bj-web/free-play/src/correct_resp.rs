@@ -1,30 +1,38 @@
 use super::button::Button;
+use bj_core::basicstrategy::rules::Surrender;
 use bj_core::deck::Card;
 use bj_core::hand::Hand;
 use bj_core::resp::Resp;
 
-pub(crate) fn is_correct_resp_button(btn: &Button, correct: Resp, hand: (&Hand, Card)) -> bool {
-    let (player, _dealer) = hand;
+pub(crate) fn is_correct_resp_button(
+    btn: Button,
+    correct: Resp,
+    hand: (&Hand, Card),
+    surrender_rule: Surrender,
+) -> bool {
+    let (player, dealer) = hand;
+    let can_double = player.can_double();
+    let can_surrender = player.can_surrender(surrender_rule, dealer);
     match btn {
         Button::Split => correct == Resp::Split,
         Button::Hit => {
             correct == Resp::Hit
-                || correct == Resp::DoubleElseHit && !player.can_double()
-                || correct == Resp::SurrenderElseHit && !player.can_surrender()
+                || correct == Resp::DoubleElseHit && !can_double
+                || correct == Resp::SurrenderElseHit && !can_surrender
         }
         Button::Stand => {
             correct == Resp::Stand
-                || correct == Resp::DoubleElseStand && !player.can_double()
-                || correct == Resp::SurrenderElseStand && !player.can_surrender()
+                || correct == Resp::DoubleElseStand && !can_double
+                || correct == Resp::SurrenderElseStand && !can_surrender
         }
         Button::Double => {
-            correct == Resp::DoubleElseHit && player.can_double()
-                || correct == Resp::DoubleElseStand && player.can_double()
+            can_double && (correct == Resp::DoubleElseHit || correct == Resp::DoubleElseStand)
         }
         Button::Surrender => {
-            correct == Resp::SurrenderElseHit && player.can_surrender()
-                || correct == Resp::SurrenderElseStand && player.can_surrender()
-                || correct == Resp::SurrenderElseSplit && player.can_surrender()
+            can_surrender
+                && (correct == Resp::SurrenderElseHit
+                    || correct == Resp::SurrenderElseStand
+                    || correct == Resp::SurrenderElseSplit)
         }
     }
 }
@@ -32,9 +40,10 @@ pub(crate) fn is_correct_resp_button(btn: &Button, correct: Resp, hand: (&Hand, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bj_core::deck::rand_card;
+    use bj_core::deck::{rand_card, Rank};
+    use rand::prelude::*;
 
-    const NUM_RAND_HANDS: usize = 1000;
+    const NUM_RAND_HANDS: usize = 5000;
 
     struct RandomHandIter {
         hand_size: usize,
@@ -56,16 +65,33 @@ mod tests {
         RandomHandIter { hand_size }.into_iter().take(n)
     }
 
+    fn random_surrender_rule() -> Surrender {
+        let mut rng = thread_rng();
+        *[Surrender::No, Surrender::Yes, Surrender::NotAce]
+            .choose(&mut rng)
+            .unwrap()
+    }
+
     #[test]
     fn hit_1() {
         // Hit button with Resp::Hit and a random hand should be correct
         let btn = Button::Hit;
         let correct = Resp::Hit;
         for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
-            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+            assert!(is_correct_resp_button(
+                btn,
+                correct,
+                (&player, dealer),
+                random_surrender_rule()
+            ));
         }
         for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
-            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+            assert!(is_correct_resp_button(
+                btn,
+                correct,
+                (&player, dealer),
+                random_surrender_rule()
+            ));
         }
     }
 
@@ -75,7 +101,12 @@ mod tests {
         let btn = Button::Hit;
         let correct = Resp::DoubleElseHit;
         for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
-            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+            assert!(is_correct_resp_button(
+                btn,
+                correct,
+                (&player, dealer),
+                random_surrender_rule()
+            ));
         }
     }
 
@@ -85,7 +116,12 @@ mod tests {
         let btn = Button::Hit;
         let correct = Resp::SurrenderElseHit;
         for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
-            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+            assert!(is_correct_resp_button(
+                btn,
+                correct,
+                (&player, dealer),
+                random_surrender_rule()
+            ));
         }
     }
 
@@ -95,7 +131,12 @@ mod tests {
         let btn = Button::Hit;
         let correct = Resp::DoubleElseHit;
         for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
-            assert!(!is_correct_resp_button(&btn, correct, (&player, dealer)));
+            assert!(!is_correct_resp_button(
+                btn,
+                correct,
+                (&player, dealer),
+                random_surrender_rule()
+            ));
         }
     }
 
@@ -105,7 +146,12 @@ mod tests {
         let btn = Button::Hit;
         let correct = Resp::SurrenderElseHit;
         for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
-            assert!(!is_correct_resp_button(&btn, correct, (&player, dealer)));
+            assert!(!is_correct_resp_button(
+                btn,
+                correct,
+                (&player, dealer),
+                Surrender::Yes
+            ));
         }
     }
 
@@ -121,10 +167,20 @@ mod tests {
             Resp::SurrenderElseSplit,
         ] {
             for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
-                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    random_surrender_rule()
+                ));
             }
             for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
-                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    random_surrender_rule()
+                ));
             }
         }
     }
@@ -135,10 +191,20 @@ mod tests {
         let btn = Button::Stand;
         let correct = Resp::Stand;
         for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
-            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+            assert!(is_correct_resp_button(
+                btn,
+                correct,
+                (&player, dealer),
+                random_surrender_rule()
+            ));
         }
         for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
-            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+            assert!(is_correct_resp_button(
+                btn,
+                correct,
+                (&player, dealer),
+                random_surrender_rule()
+            ));
         }
     }
 
@@ -148,7 +214,12 @@ mod tests {
         let btn = Button::Stand;
         let correct = Resp::DoubleElseStand;
         for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
-            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+            assert!(is_correct_resp_button(
+                btn,
+                correct,
+                (&player, dealer),
+                random_surrender_rule()
+            ));
         }
     }
 
@@ -158,7 +229,12 @@ mod tests {
         let btn = Button::Stand;
         let correct = Resp::SurrenderElseStand;
         for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
-            assert!(is_correct_resp_button(&btn, correct, (&player, dealer)));
+            assert!(is_correct_resp_button(
+                btn,
+                correct,
+                (&player, dealer),
+                random_surrender_rule()
+            ));
         }
     }
 
@@ -168,7 +244,12 @@ mod tests {
         let btn = Button::Stand;
         let correct = Resp::DoubleElseStand;
         for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
-            assert!(!is_correct_resp_button(&btn, correct, (&player, dealer)));
+            assert!(!is_correct_resp_button(
+                btn,
+                correct,
+                (&player, dealer),
+                random_surrender_rule()
+            ));
         }
     }
 
@@ -178,7 +259,12 @@ mod tests {
         let btn = Button::Stand;
         let correct = Resp::SurrenderElseStand;
         for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
-            assert!(!is_correct_resp_button(&btn, correct, (&player, dealer)));
+            assert!(!is_correct_resp_button(
+                btn,
+                correct,
+                (&player, dealer),
+                Surrender::Yes
+            ));
         }
     }
 
@@ -194,10 +280,20 @@ mod tests {
             Resp::SurrenderElseSplit,
         ] {
             for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
-                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    random_surrender_rule()
+                ));
             }
             for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
-                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    random_surrender_rule()
+                ));
             }
         }
     }
@@ -208,7 +304,12 @@ mod tests {
         let btn = Button::Double;
         for correct in &[Resp::DoubleElseHit, Resp::DoubleElseStand] {
             for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
-                assert!(is_correct_resp_button(&btn, *correct, (&player, dealer)));
+                assert!(is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    random_surrender_rule()
+                ));
             }
         }
     }
@@ -219,7 +320,12 @@ mod tests {
         let btn = Button::Double;
         for correct in &[Resp::DoubleElseHit, Resp::DoubleElseStand] {
             for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
-                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    random_surrender_rule()
+                ));
             }
         }
     }
@@ -237,10 +343,20 @@ mod tests {
             Resp::SurrenderElseSplit,
         ] {
             for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
-                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    random_surrender_rule()
+                ));
             }
             for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
-                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    random_surrender_rule()
+                ));
             }
         }
     }
@@ -257,22 +373,27 @@ mod tests {
             Resp::Split,
         ] {
             for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
-                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    random_surrender_rule()
+                ));
             }
             for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
-                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    random_surrender_rule()
+                ));
             }
         }
     }
 
     #[test]
-    fn surrender_1() {
-        // Surrender button always correct with SurrenderElse* and 2 cards: the times it isn't
-        // correct are when the table rules don't allow for it, thus it wouldn't show up in the
-        // chart, thus this function wouldn't even be getting called with this combination of
-        // arguments.
-        //
-        // Always correct with 2, always wrong with 3
+    fn surrender_no() {
+        // Surrender always wrong if rules don't allow surrendering
         let btn = Button::Surrender;
         for correct in &[
             Resp::SurrenderElseHit,
@@ -280,10 +401,84 @@ mod tests {
             Resp::SurrenderElseSplit,
         ] {
             for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
-                assert!(is_correct_resp_button(&btn, *correct, (&player, dealer)));
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    Surrender::No
+                ));
             }
             for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
-                assert!(!is_correct_resp_button(&btn, *correct, (&player, dealer)));
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    Surrender::No
+                ));
+            }
+        }
+    }
+
+    #[test]
+    fn surrender_yes() {
+        // Surrender right/wrong only depends on number of cards in hand
+        let btn = Button::Surrender;
+        // Never can surrenter 3 card hands
+        for correct in &[
+            Resp::SurrenderElseHit,
+            Resp::SurrenderElseStand,
+            Resp::SurrenderElseSplit,
+        ] {
+            for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+                assert!(is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    Surrender::Yes
+                ));
+            }
+            for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    Surrender::Yes
+                ));
+            }
+        }
+    }
+
+    #[test]
+    fn surrender_notace() {
+        // Surrender right/wrong depends on various factors
+        let btn = Button::Surrender;
+        // Never can surrenter 3 card hands
+        for correct in &[
+            Resp::SurrenderElseHit,
+            Resp::SurrenderElseStand,
+            Resp::SurrenderElseSplit,
+        ] {
+            for (player, dealer) in random_hands(3, NUM_RAND_HANDS) {
+                assert!(!is_correct_resp_button(
+                    btn,
+                    *correct,
+                    (&player, dealer),
+                    Surrender::NotAce
+                ));
+            }
+        }
+        // 2 card hands can surrender depending only on dealer (non-)ace
+        for correct in &[
+            Resp::SurrenderElseHit,
+            Resp::SurrenderElseStand,
+            Resp::SurrenderElseSplit,
+        ] {
+            for (player, dealer) in random_hands(2, NUM_RAND_HANDS) {
+                let is_correct = dealer.rank() != Rank::RA;
+                assert_eq!(
+                    is_correct,
+                    is_correct_resp_button(btn, *correct, (&player, dealer), Surrender::NotAce)
+                );
             }
         }
     }

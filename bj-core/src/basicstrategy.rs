@@ -14,7 +14,7 @@ pub mod rules {
     use serde::{Deserialize, Serialize};
     use std::convert::From;
     use std::fmt;
-    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    #[derive(Serialize, Deserialize, PartialEq, Debug, Copy, Clone)]
     pub enum Surrender {
         No,
         Yes,

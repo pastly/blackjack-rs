@@ -238,8 +238,20 @@ fn handle_button(btn: Button) {
     // the Double button was pressed.
     let bs_card =
         LSVal::from_ls_or_default(USE_SESSION_STORAGE, lskeys::LS_KEY_BS_CARD, def_bs_card());
+    let surrender_rule = match &bs_card.rules {
+        None => rules::Surrender::Yes,
+        Some(rules) => rules.surrender,
+    };
+    // return early if user didn't even give legal response to this hand
+    if !is_legal_resp(btn, (&hand.0, hand.1), surrender_rule) {
+        log(&format!(
+            "{} is not a legal response to {}/{}",
+            btn, &hand.0, hand.1
+        ));
+        return;
+    }
     let correct: Resp = bs_card.table.get(&hand.0, hand.1).unwrap();
-    let is_correct = is_correct_resp_button(&btn, correct, (&hand.0, hand.1));
+    let is_correct = is_correct_resp_button(btn, correct, (&hand.0, hand.1), surrender_rule);
     // grab a copy of what the user's existing streak is. If they get the hand wrong, we will want
     // to display this to them and we will soon be clearing out the localstorage copy of their
     // streak
@@ -248,7 +260,7 @@ fn handle_button(btn: Button) {
     update_stats((&hand.0, hand.1), is_correct);
     // display the "hint": player got it right, or they got it wrong and ___ is correct and ___ was
     // their streak
-    set_hint(&btn, correct, (&hand.0, hand.1), is_correct, old_streak);
+    set_hint(btn, correct, (&hand.0, hand.1), is_correct, old_streak);
     // get a LSVal-wrapped ref to their stats so that we can (1) generate an appropriate next hand
     // for them and (2) tell them what their stats are for the new hand
     let stats: LSVal<Table<PlayStats>> =
@@ -261,7 +273,7 @@ fn handle_button(btn: Button) {
     let new_streak = *LSVal::from_ls_or_default(USE_SESSION_STORAGE, LS_KEY_STREAK, 0);
     output_stats((&hand.0, hand.1), &(*stats), new_streak); // (2)
 
-    fn set_hint(given: &Button, correct: Resp, hand: (&Hand, Card), is_correct: bool, streak: u32) {
+    fn set_hint(given: Button, correct: Resp, hand: (&Hand, Card), is_correct: bool, streak: u32) {
         let win = web_sys::window().expect("should have a window in this context");
         let doc = win.document().expect("window should have a document");
         let s = if is_correct {
@@ -277,6 +289,16 @@ fn handle_button(btn: Button) {
             .dyn_ref::<HtmlElement>()
             .expect("hint should be HtmlElement")
             .set_inner_text(&s)
+    }
+}
+
+fn is_legal_resp(btn: Button, hand: (&Hand, Card), surrender_rule: rules::Surrender) -> bool {
+    let (player, dealer) = hand;
+    match btn {
+        Button::Hit | Button::Stand => true,
+        Button::Double => player.can_double(),
+        Button::Split => player.can_split(),
+        Button::Surrender => player.can_surrender(surrender_rule, dealer),
     }
 }
 
