@@ -9,7 +9,7 @@ use bj_core::playstats::PlayStats;
 use bj_core::rendertable::{HTMLTableRenderer, HTMLTableRendererOpts};
 use bj_core::resp::Resp;
 use bj_core::table::Table;
-use bj_core::utils::rand_next_hand;
+use bj_core::utils::{rand_next_hand, uniform_rand_2card_hand};
 use bj_web_core::bs_data;
 use bj_web_core::localstorage::{lskeys, LSVal};
 use button::Button;
@@ -27,9 +27,25 @@ const LS_KEY_TABLE_PLAYSTATS: &str = "bj-table-playstats";
 const LS_KEY_STREAK: &str = "bj-streak";
 const LS_KEY_EXISTING_HAND: &str = "bj-hand";
 
-#[derive(Default, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
+enum RandHandType {
+    // each card is drawn from the top of an shuffled inifinite deck
+    Card,
+    // a random cell is chosen from a basic strategy table, and a random hand constructed to fit
+    // that cell
+    Cell,
+}
+
+impl Default for RandHandType {
+    fn default() -> Self {
+        Self::Card
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
 struct State {
     use_session_storage: bool,
+    rand_hand_type: RandHandType,
 }
 
 lazy_static! {
@@ -87,25 +103,25 @@ pub fn run() -> Result<(), JsValue> {
 }
 
 fn set_state(new_state: State) {
+    #[cfg(debug_assertions)]
+    log(&format!("Setting state {:?}", new_state));
     let mut old_state = STATE.lock().unwrap();
     *old_state = new_state;
 }
 
 #[wasm_bindgen]
-pub fn rust_init(use_session_storage: bool) {
+pub fn rust_init(use_session_storage: bool, rand_hand_type: u8) {
     let state = State {
         use_session_storage,
+        rand_hand_type: match rand_hand_type {
+            0 => RandHandType::Card,
+            1 => RandHandType::Cell,
+            // purposefully vague
+            _ => panic!("Invalid option specified"),
+        },
         //..Default::default()
     };
     set_state(state);
-    log(&format!(
-        "Welcome! We will use {} storage",
-        if use_session_storage {
-            "session"
-        } else {
-            "local"
-        }
-    ));
     let stats = LSVal::from_ls_or_default(
         state.use_session_storage,
         LS_KEY_TABLE_PLAYSTATS,
@@ -308,13 +324,16 @@ fn handle_button(state: State, btn: Button) {
     // for them and (2) tell them what their stats are for the new hand
     let stats: LSVal<Table<PlayStats>> =
         LSVal::from_ls(state.use_session_storage, LS_KEY_TABLE_PLAYSTATS).unwrap();
-    let _ = hand.swap(rand_next_hand(&*stats)); // (1)
+    let _ = hand.swap(match state.rand_hand_type {
+        RandHandType::Card => uniform_rand_2card_hand(),
+        RandHandType::Cell => rand_next_hand(&*stats),
+    });
     output_hand(&hand.0, hand.1);
     update_buttons((&hand.0, hand.1), &bs_card.rules);
     // update_stats() will have either incremented their streak or reset it to zero, so we need tor
     // refetch their streak from localstorage
     let new_streak = *LSVal::from_ls_or_default(state.use_session_storage, LS_KEY_STREAK, 0);
-    output_stats((&hand.0, hand.1), &(*stats), new_streak); // (2)
+    output_stats((&hand.0, hand.1), &(*stats), new_streak);
 
     fn set_hint(given: Button, correct: Resp, hand: (&Hand, Card), is_correct: bool, streak: u32) {
         let win = web_sys::window().expect("should have a window in this context");

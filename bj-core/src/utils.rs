@@ -1,4 +1,4 @@
-use crate::deck::{rand_suit, Card, Rank};
+use crate::deck::{rand_card, rand_suit, Card, Rank};
 use crate::hand::{rand_hand, Hand};
 use crate::playstats::PlayStats;
 use crate::table::{GameDesc, Table};
@@ -31,4 +31,9 @@ pub fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
         )),
     };
     (hand.unwrap(), card)
+}
+
+/// Generate a random hand as if from a shuffled infinite deck
+pub fn uniform_rand_2card_hand() -> (Hand, Card) {
+    (Hand::new(&[rand_card(), rand_card()]), rand_card())
 }
