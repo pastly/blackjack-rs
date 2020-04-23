@@ -150,5 +150,40 @@ pub mod playstats_table {
             let s_out = parse_to_string(&parse_from_string(s_in.clone()).unwrap());
             assert_eq!(s_in, s_out);
         }
+
+        #[test]
+        fn empty_string() {
+            assert!(parse_from_string("".into()).is_err());
+        }
+
+        #[test]
+        fn gibberish_string() {
+            let s = "23908ucsklj;a48902uyjch j.2347y90".into();
+            assert!(parse_from_string(s).is_err());
+        }
+
+        #[test]
+        fn invalid_num_items() {
+            // also incidentally tests the correct number of items but with a trailing comma that
+            // should cause parsing to fail
+            for num in 1..NUM_CELLS + 10 {
+                let s = repeat("0/0,").take(num).collect::<String>();
+                assert!(parse_from_string(s).is_err());
+            }
+        }
+
+        #[test]
+        fn bad_fraction() {
+            // number of correct cannot be more than number seen
+            for ps in &["1/0,", "100/0", "100/99"] {
+                let mut s = repeat("0/0,")
+                    .take(10)
+                    .chain(once(*ps))
+                    .chain(repeat("0/0,").take(NUM_CELLS - 10 - 1))
+                    .collect::<String>();
+                s.truncate(s.len() - 1);
+                assert!(parse_from_string(s).is_err());
+            }
+        }
     }
 }
