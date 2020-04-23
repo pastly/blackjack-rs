@@ -9,7 +9,7 @@ use bj_core::playstats::PlayStats;
 use bj_core::rendertable::{HTMLTableRenderer, HTMLTableRendererOpts};
 use bj_core::resp::Resp;
 use bj_core::table::Table;
-use bj_core::utils::{rand_next_hand, uniform_rand_2card_hand};
+use bj_core::utils::{playstats_table, rand_next_hand, uniform_rand_2card_hand};
 use bj_web_core::bs_data;
 use bj_web_core::localstorage::{lskeys, LSVal};
 use button::Button;
@@ -414,4 +414,34 @@ pub fn on_button_clear_stats() {
     let (player, dealer) =
         &*LSVal::from_ls(state.use_session_storage, LS_KEY_EXISTING_HAND).unwrap();
     output_stats((&player, *dealer), &(*stat_table), *streak);
+}
+
+#[wasm_bindgen]
+pub fn playstats_as_db_str() -> String {
+    let state = STATE.lock().unwrap();
+    let table = LSVal::from_ls_or_default(
+        state.use_session_storage,
+        LS_KEY_TABLE_PLAYSTATS,
+        new_play_stats(),
+    );
+    playstats_table::parse_to_string(&table)
+}
+
+#[wasm_bindgen]
+pub fn playstats_db_str_into_storage(s: String) {
+    let table = match playstats_table::parse_from_string(s) {
+        Ok(t) => t,
+        Err(e) => {
+            debug_log(&format!("Couldn\'t parse string to table: {}", e));
+            return;
+        }
+    };
+    debug_log("Storing table in storage");
+    let state = STATE.lock().unwrap();
+    let mut stat_table = LSVal::from_ls_or_default(
+        state.use_session_storage,
+        LS_KEY_TABLE_PLAYSTATS,
+        new_play_stats(),
+    );
+    stat_table.swap(table);
 }

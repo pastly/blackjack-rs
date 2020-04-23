@@ -37,3 +37,118 @@ pub fn rand_next_hand(stats: &Table<PlayStats>) -> (Hand, Card) {
 pub fn uniform_rand_2card_hand() -> (Hand, Card) {
     (Hand::new(&[rand_card(), rand_card()]), rand_card())
 }
+
+pub mod playstats_table {
+    use crate::playstats::PlayStats;
+    use crate::table::{Table, NUM_CELLS};
+
+    pub fn parse_to_string(table: &Table<PlayStats>) -> String {
+        // 6 chars per table item, 360 cells in the table.
+        // "XX/YY,"      2 for each value, plus '/' and ','
+        // Doesn't have to be perfect, but should avoid reallocation in the vast majority of cases.
+        const EXPECTED_MAX_LEN: usize = 360 * 6;
+        let mut s = String::with_capacity(EXPECTED_MAX_LEN);
+        let (hards, softs, pairs) = table.as_values_sorted();
+        for item in hards.iter().chain(softs.iter()).chain(pairs.iter()) {
+            s.push_str(&format!("{}/{},", item.correct(), item.seen()));
+        }
+        // remove last comma
+        assert!(s.ends_with(','));
+        s.truncate(s.len() - 1);
+        s.shrink_to_fit();
+        s
+    }
+
+    pub fn parse_from_string(s: String) -> Result<Table<PlayStats>, String> {
+        let fracts = s.split(',').collect::<Vec<&str>>();
+        if fracts.len() != NUM_CELLS {
+            return Err(format!(
+                "Provided table has {} items, not {}. Not storing it.",
+                fracts.len(),
+                NUM_CELLS
+            ));
+        }
+        // parse string into Vec<PlayStats>
+        let mut v = Vec::with_capacity(NUM_CELLS);
+        for fract in fracts {
+            let mut stat = PlayStats::new();
+            let parts = fract.split('/').collect::<Vec<&str>>();
+            if parts.len() != 2 {
+                return Err(format!("'{}' is not a valid fraction", fract));
+            }
+            let correct = match parts[0].parse::<u32>() {
+                Ok(v) => v,
+                Err(e) => {
+                    return Err(format!("'{}' not a valid u32: {}", parts[0], e));
+                }
+            };
+            let seen = match parts[1].parse::<u32>() {
+                Ok(v) => v,
+                Err(e) => {
+                    return Err(format!("'{}' not a valid u32: {}", parts[0], e));
+                }
+            };
+            if correct > seen {
+                return Err(format!(
+                    "correct {} cannot be greater than seen {}",
+                    correct, seen
+                ));
+            }
+            stat.inc_by(seen - correct, false);
+            stat.inc_by(correct, true);
+            v.push(stat);
+        }
+        // Construct table with Vec
+        let table = match Table::new(v.into_iter()) {
+            Ok(t) => t,
+            Err(e) => {
+                return Err(format!("Problem constructing table: {}", e));
+            }
+        };
+        Ok(table)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::iter::{once, repeat};
+
+        #[test]
+        fn identity_basic() {
+            let table_in = Table::new(repeat(PlayStats::new()).take(NUM_CELLS)).unwrap();
+            let table_out = parse_from_string(parse_to_string(&table_in)).unwrap();
+            assert_eq!(table_in, table_out);
+
+            let mut s_in = repeat("0/0,").take(NUM_CELLS).collect::<String>();
+            s_in.truncate(s_in.len() - 1);
+            let s_out = parse_to_string(&parse_from_string(s_in.clone()).unwrap());
+            assert_eq!(s_in, s_out);
+        }
+
+        #[test]
+        fn identity_harder() {
+            let mut ps1 = PlayStats::new();
+            ps1.inc_by(10, true);
+            ps1.inc_by(100, false);
+            let table_in = Table::new(
+                repeat(PlayStats::new())
+                    .take(10)
+                    .chain(once(ps1))
+                    .chain(repeat(PlayStats::new()).take(NUM_CELLS - 10 - 1)),
+            )
+            .unwrap();
+            let table_out = parse_from_string(parse_to_string(&table_in)).unwrap();
+            assert_eq!(table_in, table_out);
+
+            let ps2 = "100/110,";
+            let mut s_in = repeat("0/0,")
+                .take(10)
+                .chain(once(ps2))
+                .chain(repeat("0/0,").take(NUM_CELLS - 10 - 1))
+                .collect::<String>();
+            s_in.truncate(s_in.len() - 1);
+            let s_out = parse_to_string(&parse_from_string(s_in.clone()).unwrap());
+            assert_eq!(s_in, s_out);
+        }
+    }
+}
