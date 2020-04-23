@@ -96,6 +96,11 @@ extern "C" {
     fn log(s: &str);
 }
 
+fn debug_log(s: &str) {
+    #[cfg(debug_assertions)]
+    log(s)
+}
+
 #[wasm_bindgen(start)]
 pub fn run() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
@@ -103,8 +108,7 @@ pub fn run() -> Result<(), JsValue> {
 }
 
 fn set_state(new_state: State) {
-    #[cfg(debug_assertions)]
-    log(&format!("Setting state {:?}", new_state));
+    debug_log(&format!("Setting state {:?}", new_state));
     let mut old_state = STATE.lock().unwrap();
     *old_state = new_state;
 }
