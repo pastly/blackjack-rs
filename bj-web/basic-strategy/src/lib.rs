@@ -416,6 +416,8 @@ pub fn on_button_clear_stats() {
     output_stats((&player, *dealer), &(*stat_table), *streak);
 }
 
+/// Fetch the user's Table<PlayStats> from local/session storage and return it as a serialized
+/// string ready to be stored in a database.
 #[wasm_bindgen]
 pub fn playstats_as_db_str() -> String {
     let state = STATE.lock().unwrap();
@@ -427,6 +429,8 @@ pub fn playstats_as_db_str() -> String {
     playstats_table::parse_to_string(&table)
 }
 
+/// Take the given Table<PlayStats> represented in a serialized "db string" and store it in
+/// local/session storage.
 #[wasm_bindgen]
 pub fn playstats_db_str_into_storage(s: String) {
     let table = match playstats_table::parse_from_string(s) {
