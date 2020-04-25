@@ -114,9 +114,9 @@ fn set_state(new_state: State) {
 }
 
 #[wasm_bindgen]
-pub fn rust_init(use_session_storage: bool, rand_hand_type: u8) {
+pub fn rust_init(rand_hand_type: u8) {
     let state = State {
-        use_session_storage,
+        use_session_storage: true,
         rand_hand_type: match rand_hand_type {
             0 => RandHandType::Card,
             1 => RandHandType::Cell,
