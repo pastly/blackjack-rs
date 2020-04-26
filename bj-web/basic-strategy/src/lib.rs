@@ -111,7 +111,7 @@ extern "C" {
     #[wasm_bindgen(js_namespace = console)]
     fn log(s: &str);
 
-    fn upload_playstats();
+    fn upload_statistics();
 }
 
 fn debug_log(s: &str) {
@@ -376,44 +376,62 @@ fn is_legal_resp(btn: Button, hand: (&Hand, Card), surrender_rule: rules::Surren
 
 #[wasm_bindgen]
 pub fn on_button_hit() {
-    let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Hit)
+    {
+        let mut state = STATE.lock().unwrap();
+        handle_button(&mut *state, Button::Hit)
+    }
+    upload_statistics();
 }
 
 #[wasm_bindgen]
 pub fn on_button_stand() {
-    let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Stand)
+    {
+        let mut state = STATE.lock().unwrap();
+        handle_button(&mut *state, Button::Stand)
+    }
+    upload_statistics();
 }
 
 #[wasm_bindgen]
 pub fn on_button_double() {
-    let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Double)
+    {
+        let mut state = STATE.lock().unwrap();
+        handle_button(&mut *state, Button::Double)
+    }
+    upload_statistics();
 }
 
 #[wasm_bindgen]
 pub fn on_button_split() {
-    let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Split)
+    {
+        let mut state = STATE.lock().unwrap();
+        handle_button(&mut *state, Button::Split)
+    }
+    upload_statistics();
 }
 
 #[wasm_bindgen]
 pub fn on_button_surrender() {
-    let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Surrender)
+    {
+        let mut state = STATE.lock().unwrap();
+        handle_button(&mut *state, Button::Surrender)
+    }
+    upload_statistics();
 }
 
 #[wasm_bindgen]
 pub fn on_button_clear_stats() {
-    let mut state = STATE.lock().unwrap();
-    for v in state.play_stats.values_mut() {
-        *v = PlayStats::new();
+    {
+        let mut state = STATE.lock().unwrap();
+        for v in state.play_stats.values_mut() {
+            *v = PlayStats::new();
+        }
+        state.streak = 0;
+        let (player, dealer) =
+            &*LSVal::from_ls(state.use_session_storage, LS_KEY_EXISTING_HAND).unwrap();
+        output_stats((&player, *dealer), &state.play_stats, state.streak);
     }
-    state.streak = 0;
-    let (player, dealer) =
-        &*LSVal::from_ls(state.use_session_storage, LS_KEY_EXISTING_HAND).unwrap();
-    output_stats((&player, *dealer), &state.play_stats, state.streak);
+    upload_statistics();
 }
 
 #[wasm_bindgen]
