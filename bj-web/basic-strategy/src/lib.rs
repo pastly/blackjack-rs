@@ -294,6 +294,24 @@ fn update_buttons(hand: (&Hand, Card), rules: &Option<rules::Rules>) {
     }
 }
 
+fn set_hint(given: Button, correct: Resp, hand: (&Hand, Card), is_correct: bool, streak: u32) {
+    let win = web_sys::window().expect("should have a window in this context");
+    let doc = win.document().expect("window should have a document");
+    let s = if is_correct {
+        format!("{} correct", given)
+    } else {
+        format!(
+            "{} wrong. Should {} {} vs {}. Streak was {}",
+            given, correct, hand.0, hand.1, streak
+        )
+    };
+    doc.get_element_by_id("hint")
+        .expect("should exist hint")
+        .dyn_ref::<HtmlElement>()
+        .expect("hint should be HtmlElement")
+        .set_inner_text(&s)
+}
+
 fn handle_button(state: &mut State, btn: Button) {
     // the (player_hand, dealer_card) currently on the screen
     let mut hand: LSVal<(Hand, Card)> =
@@ -344,24 +362,6 @@ fn handle_button(state: &mut State, btn: Button) {
     // update_stats() will have either incremented their streak or reset it to zero, so we need to
     // refetch their streak from state
     output_stats((&hand.0, hand.1), &state.play_stats, state.streak);
-
-    fn set_hint(given: Button, correct: Resp, hand: (&Hand, Card), is_correct: bool, streak: u32) {
-        let win = web_sys::window().expect("should have a window in this context");
-        let doc = win.document().expect("window should have a document");
-        let s = if is_correct {
-            format!("{} correct", given)
-        } else {
-            format!(
-                "{} wrong. Should {} {} vs {}. Streak was {}",
-                given, correct, hand.0, hand.1, streak
-            )
-        };
-        doc.get_element_by_id("hint")
-            .expect("should exist hint")
-            .dyn_ref::<HtmlElement>()
-            .expect("hint should be HtmlElement")
-            .set_inner_text(&s)
-    }
 }
 
 fn is_legal_resp(btn: Button, hand: (&Hand, Card), surrender_rule: rules::Surrender) -> bool {
