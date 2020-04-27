@@ -24,7 +24,7 @@ use web_sys::{Element, HtmlElement};
 extern crate lazy_static;
 
 const LS_KEY_EXISTING_HAND: &str = "bj-hand";
-const UPLOAD_STATS_EVERY: u16 = 5;
+const UPLOAD_STATS_EVERY: u16 = 10;
 
 #[derive(Clone, Copy, Debug)]
 enum RandHandType {
