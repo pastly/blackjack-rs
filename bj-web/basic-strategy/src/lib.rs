@@ -296,10 +296,10 @@ fn set_hint(given: Button, correct: Resp, hand: (&Hand, Card), is_correct: bool,
     let win = web_sys::window().expect("should have a window in this context");
     let doc = win.document().expect("window should have a document");
     let s = if is_correct {
-        format!("{} correct", given)
+        format!("{} correct.", given)
     } else {
         format!(
-            "{} wrong. Should {} {} vs {}. Streak was {}",
+            "{} wrong. Should {} {} vs {}. Streak was {}.",
             given, correct, hand.0, hand.1, streak
         )
     };
