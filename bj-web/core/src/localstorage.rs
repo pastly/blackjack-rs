@@ -3,6 +3,7 @@ use web_sys::Storage;
 
 pub mod lskeys {
     pub const LS_KEY_BS_CARD: &str = "bj-current-bs-card";
+    pub const LS_KEY_EXISTING_HAND: &str = "bj-hand";
 }
 
 pub struct LSVal<T>

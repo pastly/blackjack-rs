@@ -1,8 +1,7 @@
 mod button;
 mod correct_resp;
 
-use bj_core::basicstrategy::rules;
-use bj_core::basicstrategy::BasicStrategy;
+use bj_core::basicstrategy::{rules, BasicStrategy};
 use bj_core::deck::{Card, Rank, Suit};
 use bj_core::hand::Hand;
 use bj_core::playstats::PlayStats;
@@ -23,7 +22,6 @@ use web_sys::{Element, HtmlElement};
 #[macro_use]
 extern crate lazy_static;
 
-const LS_KEY_EXISTING_HAND: &str = "bj-hand";
 const UPLOAD_STATS_EVERY: u16 = 10;
 
 #[derive(Clone, Copy, Debug)]
@@ -110,6 +108,8 @@ fn card_char(card: Card) -> char {
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
     fn log(s: &str);
+
+    fn flash_hint_message(s: &str);
 }
 
 fn debug_log(s: &str) {
@@ -144,7 +144,7 @@ pub fn rust_init(rand_hand_type: u8) {
     let state = STATE.lock().unwrap();
     let (player_hand, dealer_card) = &*LSVal::from_ls_or_default(
         state.use_session_storage,
-        LS_KEY_EXISTING_HAND,
+        lskeys::LS_KEY_EXISTING_HAND,
         rand_next_hand(&state.play_stats),
     );
     output_hand(player_hand, *dealer_card);
@@ -293,8 +293,6 @@ fn update_buttons(hand: (&Hand, Card), rules: &Option<rules::Rules>) {
 }
 
 fn set_hint(given: Button, correct: Resp, hand: (&Hand, Card), is_correct: bool, streak: u32) {
-    let win = web_sys::window().expect("should have a window in this context");
-    let doc = win.document().expect("window should have a document");
     let s = if is_correct {
         format!("{} correct.", given)
     } else {
@@ -303,21 +301,13 @@ fn set_hint(given: Button, correct: Resp, hand: (&Hand, Card), is_correct: bool,
             given, correct, hand.0, hand.1, streak
         )
     };
-    doc.get_element_by_id("hint")
-        .expect("should exist hint")
-        .dyn_ref::<HtmlElement>()
-        .expect("hint should be HtmlElement")
-        .set_inner_text(&s)
+    flash_hint_message(&s);
 }
 
 fn handle_button(state: &mut State, btn: Button) {
     // the (player_hand, dealer_card) currently on the screen
     let mut hand: LSVal<(Hand, Card)> =
-        LSVal::from_ls(state.use_session_storage, LS_KEY_EXISTING_HAND).unwrap();
-    // the correct response to this (player_hand, dealer_card). We store the bool is_correct as
-    // well because whether or not the response is correct is more complex than button == resp: if
-    // the correct Resp is DoubleElseHit (or its cousins) then it is not enough to simply check if
-    // the Double button was pressed.
+        LSVal::from_ls(state.use_session_storage, lskeys::LS_KEY_EXISTING_HAND).unwrap();
     let bs_card = LSVal::from_ls_or_default(
         state.use_session_storage,
         lskeys::LS_KEY_BS_CARD,
@@ -335,6 +325,10 @@ fn handle_button(state: &mut State, btn: Button) {
         ));
         return;
     }
+    // the correct response to this (player_hand, dealer_card). We store the bool is_correct as
+    // well because whether or not the response is correct is more complex than button == resp: if
+    // the correct Resp is DoubleElseHit (or its cousins) then it is not enough to simply check if
+    // the Double button was pressed.
     let correct: Resp = bs_card.table.get(&hand.0, hand.1).unwrap();
     let is_correct = is_correct_resp_button(btn, correct, (&hand.0, hand.1), surrender_rule);
     // grab a copy of what the user's existing streak is. If they get the hand wrong, we will want
@@ -425,7 +419,7 @@ pub fn on_button_clear_stats() {
     }
     state.streak = 0;
     let (player, dealer) =
-        &*LSVal::from_ls(state.use_session_storage, LS_KEY_EXISTING_HAND).unwrap();
+        &*LSVal::from_ls(state.use_session_storage, lskeys::LS_KEY_EXISTING_HAND).unwrap();
     output_stats((&player, *dealer), &state.play_stats, state.streak);
     if state.next_upload_stats > 0 {
         state.next_upload_stats -= 1;
@@ -461,7 +455,7 @@ pub fn statistics_into_state(play_stats_s: String, streak: u32) {
     state.play_stats = table;
     state.streak = streak;
     let hand: LSVal<(Hand, Card)> =
-        LSVal::from_ls(state.use_session_storage, LS_KEY_EXISTING_HAND).unwrap();
+        LSVal::from_ls(state.use_session_storage, lskeys::LS_KEY_EXISTING_HAND).unwrap();
     output_stats((&hand.0, hand.1), &state.play_stats, state.streak);
 }
 

@@ -5,6 +5,7 @@ members =[
     "bj-web/basic-strategy",
     "bj-web/custom-card",
     "bj-web/core",
+    "bj-web/time-trial",
 ]
 
 [profile.release]
