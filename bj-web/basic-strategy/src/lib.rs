@@ -1,5 +1,3 @@
-mod correct_resp;
-
 use bj_core::basicstrategy::{rules, BasicStrategy};
 use bj_core::deck::{Card, Rank, Suit};
 use bj_core::hand::Hand;
@@ -10,9 +8,9 @@ use bj_core::table::Table;
 use bj_core::utils::{playstats_table, rand_next_hand, uniform_rand_2card_hand};
 use bj_web_core::bs_data;
 use bj_web_core::button::GameButton;
+use bj_web_core::correct_resp::is_correct_resp_button;
 use bj_web_core::localstorage::{lskeys, LSVal};
 use console_error_panic_hook;
-use correct_resp::is_correct_resp_button;
 use std::default::Default;
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;

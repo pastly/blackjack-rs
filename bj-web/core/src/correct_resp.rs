@@ -1,10 +1,10 @@
+use crate::button::GameButton;
 use bj_core::basicstrategy::rules::Surrender;
 use bj_core::deck::Card;
 use bj_core::hand::Hand;
 use bj_core::resp::Resp;
-use bj_web_core::button::GameButton;
 
-pub(crate) fn is_correct_resp_button(
+pub fn is_correct_resp_button(
     btn: GameButton,
     correct: Resp,
     hand: (&Hand, Card),
