@@ -1,7 +1,7 @@
 use std::fmt;
 
 #[derive(Clone, Copy)]
-pub(crate) enum Button {
+pub enum GameButton {
     Hit,
     Stand,
     Double,
@@ -9,7 +9,7 @@ pub(crate) enum Button {
     Surrender,
 }
 
-impl fmt::Display for Button {
+impl fmt::Display for GameButton {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

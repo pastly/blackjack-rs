@@ -1,4 +1,3 @@
-mod button;
 mod correct_resp;
 
 use bj_core::basicstrategy::{rules, BasicStrategy};
@@ -8,8 +7,8 @@ use bj_core::rendertable::{HTMLTableRenderer, HTMLTableRendererOpts};
 use bj_core::resp::Resp;
 use bj_core::utils::uniform_rand_2card_hand;
 use bj_web_core::bs_data;
+use bj_web_core::button::GameButton;
 use bj_web_core::localstorage::{lskeys, LSVal};
-use button::Button;
 use console_error_panic_hook;
 use correct_resp::is_correct_resp_button;
 use js_sys::Date;
@@ -114,47 +113,47 @@ fn output_resp_table(state: &State) {
         .set_inner_html(&String::from_utf8(fd).unwrap());
 }
 
-fn is_legal_resp(btn: Button, hand: (&Hand, Card), surrender_rule: rules::Surrender) -> bool {
+fn is_legal_resp(btn: GameButton, hand: (&Hand, Card), surrender_rule: rules::Surrender) -> bool {
     let (player, dealer) = hand;
     match btn {
-        Button::Hit | Button::Stand => true,
-        Button::Double => player.can_double(),
-        Button::Split => player.can_split(),
-        Button::Surrender => player.can_surrender(surrender_rule, dealer),
+        GameButton::Hit | GameButton::Stand => true,
+        GameButton::Double => player.can_double(),
+        GameButton::Split => player.can_split(),
+        GameButton::Surrender => player.can_surrender(surrender_rule, dealer),
     }
 }
 
 #[wasm_bindgen]
 pub fn on_button_hit() {
     let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Hit);
+    handle_button(&mut *state, GameButton::Hit);
 }
 
 #[wasm_bindgen]
 pub fn on_button_stand() {
     let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Stand);
+    handle_button(&mut *state, GameButton::Stand);
 }
 
 #[wasm_bindgen]
 pub fn on_button_double() {
     let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Double);
+    handle_button(&mut *state, GameButton::Double);
 }
 
 #[wasm_bindgen]
 pub fn on_button_split() {
     let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Split);
+    handle_button(&mut *state, GameButton::Split);
 }
 
 #[wasm_bindgen]
 pub fn on_button_surrender() {
     let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Surrender);
+    handle_button(&mut *state, GameButton::Surrender);
 }
 
-fn handle_button(state: &mut State, btn: Button) {
+fn handle_button(state: &mut State, btn: GameButton) {
     // don't do anything if game over
     if state.num_hands <= state.results.len() {
         return;
@@ -312,7 +311,13 @@ fn card_char(card: Card) -> char {
     unsafe { std::char::from_u32_unchecked(val) }
 }
 
-fn set_hint(given: Button, correct: Resp, hand: (&Hand, Card), is_correct: bool, remaining: usize) {
+fn set_hint(
+    given: GameButton,
+    correct: Resp,
+    hand: (&Hand, Card),
+    is_correct: bool,
+    remaining: usize,
+) {
     let s = if is_correct {
         format!(
             "{} correct. {} hand{} to go.",

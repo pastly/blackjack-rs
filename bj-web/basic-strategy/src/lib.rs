@@ -1,4 +1,3 @@
-mod button;
 mod correct_resp;
 
 use bj_core::basicstrategy::{rules, BasicStrategy};
@@ -10,8 +9,8 @@ use bj_core::resp::Resp;
 use bj_core::table::Table;
 use bj_core::utils::{playstats_table, rand_next_hand, uniform_rand_2card_hand};
 use bj_web_core::bs_data;
+use bj_web_core::button::GameButton;
 use bj_web_core::localstorage::{lskeys, LSVal};
-use button::Button;
 use console_error_panic_hook;
 use correct_resp::is_correct_resp_button;
 use std::default::Default;
@@ -292,7 +291,7 @@ fn update_buttons(hand: (&Hand, Card), rules: &Option<rules::Rules>) {
     }
 }
 
-fn set_hint(given: Button, correct: Resp, hand: (&Hand, Card), is_correct: bool, streak: u32) {
+fn set_hint(given: GameButton, correct: Resp, hand: (&Hand, Card), is_correct: bool, streak: u32) {
     let s = if is_correct {
         format!("{} correct.", given)
     } else {
@@ -304,7 +303,7 @@ fn set_hint(given: Button, correct: Resp, hand: (&Hand, Card), is_correct: bool,
     flash_hint_message(&s);
 }
 
-fn handle_button(state: &mut State, btn: Button) {
+fn handle_button(state: &mut State, btn: GameButton) {
     // the (player_hand, dealer_card) currently on the screen
     let mut hand: LSVal<(Hand, Card)> =
         LSVal::from_ls(state.use_session_storage, lskeys::LS_KEY_EXISTING_HAND).unwrap();
@@ -356,20 +355,20 @@ fn handle_button(state: &mut State, btn: Button) {
     output_stats((&hand.0, hand.1), &state.play_stats, state.streak);
 }
 
-fn is_legal_resp(btn: Button, hand: (&Hand, Card), surrender_rule: rules::Surrender) -> bool {
+fn is_legal_resp(btn: GameButton, hand: (&Hand, Card), surrender_rule: rules::Surrender) -> bool {
     let (player, dealer) = hand;
     match btn {
-        Button::Hit | Button::Stand => true,
-        Button::Double => player.can_double(),
-        Button::Split => player.can_split(),
-        Button::Surrender => player.can_surrender(surrender_rule, dealer),
+        GameButton::Hit | GameButton::Stand => true,
+        GameButton::Double => player.can_double(),
+        GameButton::Split => player.can_split(),
+        GameButton::Surrender => player.can_surrender(surrender_rule, dealer),
     }
 }
 
 #[wasm_bindgen]
 pub fn on_button_hit() {
     let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Hit);
+    handle_button(&mut *state, GameButton::Hit);
     if state.next_upload_stats > 0 {
         state.next_upload_stats -= 1;
     }
@@ -378,7 +377,7 @@ pub fn on_button_hit() {
 #[wasm_bindgen]
 pub fn on_button_stand() {
     let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Stand);
+    handle_button(&mut *state, GameButton::Stand);
     if state.next_upload_stats > 0 {
         state.next_upload_stats -= 1;
     }
@@ -387,7 +386,7 @@ pub fn on_button_stand() {
 #[wasm_bindgen]
 pub fn on_button_double() {
     let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Double);
+    handle_button(&mut *state, GameButton::Double);
     if state.next_upload_stats > 0 {
         state.next_upload_stats -= 1;
     }
@@ -396,7 +395,7 @@ pub fn on_button_double() {
 #[wasm_bindgen]
 pub fn on_button_split() {
     let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Split);
+    handle_button(&mut *state, GameButton::Split);
     if state.next_upload_stats > 0 {
         state.next_upload_stats -= 1;
     }
@@ -405,7 +404,7 @@ pub fn on_button_split() {
 #[wasm_bindgen]
 pub fn on_button_surrender() {
     let mut state = STATE.lock().unwrap();
-    handle_button(&mut *state, Button::Surrender);
+    handle_button(&mut *state, GameButton::Surrender);
     if state.next_upload_stats > 0 {
         state.next_upload_stats -= 1;
     }
