@@ -7,8 +7,7 @@ else
 	MODE="--release"
 fi
 echo "Compiling with $MODE"
-for CRATE_CARGO in ./*/Cargo.toml; do
-    CRATE_DIR=$(dirname $CRATE_CARGO)
+for CRATE_DIR in basic-strategy time-trial; do
     cd $CRATE_DIR
     cargo fmt
     cargo clippy
