@@ -60,6 +60,8 @@ extern "C" {
 
     fn flash_hint_message(s: &str);
     fn set_hint_message(s: &str);
+
+    fn upload_results(buf: &[u8]);
 }
 
 #[wasm_bindgen(start)]
@@ -86,7 +88,13 @@ pub fn rust_init(num_hands: usize) {
         lskeys::LS_KEY_EXISTING_HAND,
         uniform_rand_2card_hand(),
     );
+    let bs_card = LSVal::from_ls_or_default(
+        state.use_session_storage,
+        lskeys::LS_KEY_BS_CARD,
+        def_bs_card(),
+    );
     output_hand(&hand.0, hand.1);
+    update_game_buttons((&hand.0, hand.1), &bs_card.rules);
 }
 
 fn output_resp_table(state: &State) {
@@ -150,6 +158,12 @@ pub fn on_button_surrender() {
     handle_button(&mut *state, GameButton::Surrender);
 }
 
+#[wasm_bindgen]
+pub fn okay_to_upload_results() -> bool {
+    let state = STATE.lock().unwrap();
+    state.num_hands == state.results.len()
+}
+
 fn handle_button(state: &mut State, btn: GameButton) {
     // don't do anything if game over
     if state.num_hands <= state.results.len() {
@@ -202,7 +216,7 @@ fn handle_button(state: &mut State, btn: GameButton) {
     // generate a new hand
     let _ = hand.swap(uniform_rand_2card_hand());
     output_hand(&hand.0, hand.1);
-    update_buttons((&hand.0, hand.1), &bs_card.rules);
+    update_game_buttons((&hand.0, hand.1), &bs_card.rules);
     // consider ending the game
     if state.results.len() == state.num_hands {
         // game over
@@ -213,10 +227,11 @@ fn handle_button(state: &mut State, btn: GameButton) {
             .iter()
             .fold(0, |acc, res| acc + if res.correct { 1 } else { 0 });
         set_hint_message(&format!(
-            "Done! Did {}/{} hands correctly in {} seconds",
+            "Done! Did {}/{} hands correctly in {} seconds. Upload results?",
             num_correct, state.num_hands, dur,
         ));
-        set_hint_message(&handresult::to_string(&state.results));
+        hide_game_buttons();
+        show_upload_buttons();
     }
 }
 
@@ -235,7 +250,43 @@ fn output_hand(player: &Hand, dealer: Card) {
         .set_inner_text(&format!("{}", card_char(dealer)));
 }
 
-fn update_buttons(hand: (&Hand, Card), rules: &Option<rules::Rules>) {
+fn show_upload_buttons() {
+    let win = web_sys::window().expect("should have a window in this context");
+    let doc = win.document().expect("window should have a document");
+    for id in &["button_upload_yes", "button_upload_no"] {
+        let class_list = doc
+            .get_element_by_id(id)
+            .expect("should exist button")
+            .dyn_ref::<Element>()
+            .expect("button should be Element")
+            .class_list();
+        class_list
+            .remove_1("hide")
+            .expect("Unable to remove hide class");
+    }
+}
+
+fn hide_game_buttons() {
+    let win = web_sys::window().expect("should have a window in this context");
+    let doc = win.document().expect("window should have a document");
+    for id in &[
+        "button_hit",
+        "button_stand",
+        "button_double",
+        "button_split",
+        "button_surrender",
+    ] {
+        let class_list = doc
+            .get_element_by_id(id)
+            .expect("should exist button")
+            .dyn_ref::<Element>()
+            .expect("button should be Element")
+            .class_list();
+        class_list.add_1("hide").expect("Unable to add hide class");
+    }
+}
+
+fn update_game_buttons(hand: (&Hand, Card), rules: &Option<rules::Rules>) {
     let win = web_sys::window().expect("should have a window in this context");
     let doc = win.document().expect("window should have a document");
     let hit_enabled = true;
@@ -307,7 +358,13 @@ fn set_hint(
 }
 
 #[wasm_bindgen]
-pub fn results_from_state() -> String {
+pub fn results_from_state() -> Vec<u8> {
     let state = STATE.lock().unwrap();
-    handresult::to_string(&state.results)
+    serde_cbor::to_vec(&state.results).unwrap()
+}
+
+#[wasm_bindgen]
+pub fn clear_results() {
+    let mut state = STATE.lock().unwrap();
+    state.results.clear();
 }
