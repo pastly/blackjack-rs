@@ -2,7 +2,6 @@ use crate::deck::{Card, Rank, Suit};
 use crate::hand::{Hand, HandError, HandType};
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
-use serde_derive;
 use std::collections::HashMap;
 use std::convert::From;
 use std::fmt;

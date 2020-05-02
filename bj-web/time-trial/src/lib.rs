@@ -1,14 +1,17 @@
+mod handresult;
+
 use bj_core::basicstrategy::{rules, BasicStrategy};
-use bj_core::deck::{Card, Rank, Suit};
+use bj_core::deck::{Card, Rank};
 use bj_core::hand::Hand;
 use bj_core::rendertable::{HTMLTableRenderer, HTMLTableRendererOpts};
 use bj_core::resp::Resp;
 use bj_core::utils::uniform_rand_2card_hand;
 use bj_web_core::bs_data;
 use bj_web_core::button::GameButton;
+use bj_web_core::card_char;
 use bj_web_core::correct_resp::is_correct_resp_button;
 use bj_web_core::localstorage::{lskeys, LSVal};
-use console_error_panic_hook;
+use handresult::HandResult;
 use js_sys::Date;
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
@@ -18,17 +21,13 @@ use web_sys::{Element, HtmlElement};
 extern crate lazy_static;
 
 #[derive(Debug)]
-struct HandResult {
-    player: Hand,
-    dealer: Card,
-    correct: bool,
-}
-
-#[derive(Debug)]
 struct State {
     use_session_storage: bool,
+    // results storage, obviously
     results: Vec<HandResult>,
+    // stop when results.len() is this
     num_hands: usize,
+    // timestamp (in seconds, not ms) of first result
     start_time: f64,
 }
 
@@ -40,8 +39,8 @@ impl Default for State {
             results: vec![],
             // to be updated on rust_init()
             num_hands: 0,
-            // to be updated on first button press
-            start_time: 0f64,
+            // to be updated on first result
+            start_time: 0.0,
         }
     }
 }
@@ -176,10 +175,8 @@ fn handle_button(state: &mut State, btn: GameButton) {
         ));
         return;
     }
-    // if this is the very first legal button press, time to start the timer!
+    let now = Date::now() / 1000.0; // convert fro ms to s
     if state.results.is_empty() {
-        let now = Date::now();
-        log(&format!("Setting start time {}", now));
         state.start_time = now;
     }
     // the correct response to this (player_hand, dealer_card). We store the bool is_correct as
@@ -193,6 +190,7 @@ fn handle_button(state: &mut State, btn: GameButton) {
         player: hand.0.clone(),
         dealer: hand.1,
         correct: is_correct,
+        time: now - state.start_time,
     });
     set_hint(
         btn,
@@ -208,8 +206,8 @@ fn handle_button(state: &mut State, btn: GameButton) {
     // consider ending the game
     if state.results.len() == state.num_hands {
         // game over
-        let now = Date::now();
-        let dur = (now - state.start_time) / 1000.0;
+        assert!(!state.results.is_empty());
+        let dur = state.results[state.results.len() - 1].time;
         let num_correct = state
             .results
             .iter()
@@ -218,6 +216,7 @@ fn handle_button(state: &mut State, btn: GameButton) {
             "Done! Did {}/{} hands correctly in {} seconds",
             num_correct, state.num_hands, dur,
         ));
+        set_hint_message(&handresult::to_string(&state.results));
     }
 }
 
@@ -279,36 +278,6 @@ fn update_buttons(hand: (&Hand, Card), rules: &Option<rules::Rules>) {
     }
 }
 
-fn card_char(card: Card) -> char {
-    // https://en.wikipedia.org/wiki/Playing_cards_in_Unicode#Block
-    let base: u32 = match card.suit() {
-        Suit::Spade => 0x1F0A0,
-        Suit::Heart => 0x1F0B0,
-        Suit::Diamond => 0x1F0C0,
-        Suit::Club => 0x1F0D0,
-    };
-    let val = base
-        + match card.rank() {
-            Rank::RA => 1,
-            Rank::R2 => 2,
-            Rank::R3 => 3,
-            Rank::R4 => 4,
-            Rank::R5 => 5,
-            Rank::R6 => 6,
-            Rank::R7 => 7,
-            Rank::R8 => 8,
-            Rank::R9 => 9,
-            Rank::RT => 10,
-            Rank::RJ => 11,
-            // Unicode includes Knight here. Weird. Skip 12.
-            Rank::RQ => 13,
-            Rank::RK => 14,
-        };
-    // Safety: Value will always be a valid char thanks to match statements and enums on card
-    // suits and ranks.
-    unsafe { std::char::from_u32_unchecked(val) }
-}
-
 fn set_hint(
     given: GameButton,
     correct: Resp,
@@ -335,4 +304,10 @@ fn set_hint(
         )
     };
     flash_hint_message(&s);
+}
+
+#[wasm_bindgen]
+pub fn results_from_state() -> String {
+    let state = STATE.lock().unwrap();
+    handresult::to_string(&state.results)
 }

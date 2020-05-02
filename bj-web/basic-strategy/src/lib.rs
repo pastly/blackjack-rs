@@ -1,5 +1,5 @@
 use bj_core::basicstrategy::{rules, BasicStrategy};
-use bj_core::deck::{Card, Rank, Suit};
+use bj_core::deck::{Card, Rank};
 use bj_core::hand::Hand;
 use bj_core::playstats::PlayStats;
 use bj_core::rendertable::{HTMLTableRenderer, HTMLTableRendererOpts};
@@ -8,9 +8,9 @@ use bj_core::table::Table;
 use bj_core::utils::{playstats_table, rand_next_hand, uniform_rand_2card_hand};
 use bj_web_core::bs_data;
 use bj_web_core::button::GameButton;
+use bj_web_core::card_char;
 use bj_web_core::correct_resp::is_correct_resp_button;
 use bj_web_core::localstorage::{lskeys, LSVal};
-use console_error_panic_hook;
 use std::default::Default;
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
@@ -69,36 +69,6 @@ fn new_play_stats() -> Table<PlayStats> {
 
 fn def_bs_card() -> BasicStrategy {
     serde_json::from_reader(bs_data::T1_JSON).unwrap()
-}
-
-fn card_char(card: Card) -> char {
-    // https://en.wikipedia.org/wiki/Playing_cards_in_Unicode#Block
-    let base: u32 = match card.suit() {
-        Suit::Spade => 0x1F0A0,
-        Suit::Heart => 0x1F0B0,
-        Suit::Diamond => 0x1F0C0,
-        Suit::Club => 0x1F0D0,
-    };
-    let val = base
-        + match card.rank() {
-            Rank::RA => 1,
-            Rank::R2 => 2,
-            Rank::R3 => 3,
-            Rank::R4 => 4,
-            Rank::R5 => 5,
-            Rank::R6 => 6,
-            Rank::R7 => 7,
-            Rank::R8 => 8,
-            Rank::R9 => 9,
-            Rank::RT => 10,
-            Rank::RJ => 11,
-            // Unicode includes Knight here. Weird. Skip 12.
-            Rank::RQ => 13,
-            Rank::RK => 14,
-        };
-    // Safety: Value will always be a valid char thanks to match statements and enums on card
-    // suits and ranks.
-    unsafe { std::char::from_u32_unchecked(val) }
 }
 
 #[wasm_bindgen]
