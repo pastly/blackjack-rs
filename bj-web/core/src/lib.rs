@@ -38,11 +38,17 @@ pub fn card_char(card: Card) -> char {
 pub fn char_card(c: char) -> Option<Card> {
     let c = c as u32;
     let (base, suit): (u32, _) = {
-        if c > 0x1F0D0 { (0x1F0D0, Suit::Club) }
-        else if c > 0x1F0C0 { (0x1F0C0, Suit::Diamond) }
-        else if c > 0x1F0B0 { (0x1F0B0, Suit::Heart) }
-        else if c > 0x1F0A0 { (0x1F0A0, Suit::Spade) }
-        else { return None }
+        if c > 0x1F0D0 {
+            (0x1F0D0, Suit::Club)
+        } else if c > 0x1F0C0 {
+            (0x1F0C0, Suit::Diamond)
+        } else if c > 0x1F0B0 {
+            (0x1F0B0, Suit::Heart)
+        } else if c > 0x1F0A0 {
+            (0x1F0A0, Suit::Spade)
+        } else {
+            return None;
+        }
     };
     let rank = {
         let diff = c - base;
