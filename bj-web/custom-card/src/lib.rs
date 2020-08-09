@@ -5,7 +5,6 @@ use bj_core::resp::Resp;
 use bj_core::table::{dealer_card_from_desc, player_hand_from_desc, GameDesc};
 use bj_web_core::bs_data;
 use bj_web_core::localstorage::{lskeys, LSVal};
-use console_error_panic_hook;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{Element, HtmlElement};

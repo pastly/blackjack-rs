@@ -1,7 +1,6 @@
 use bj_core::basicstrategy::BasicStrategy;
 use bj_core::rendertable::{HTMLTableRenderer, HTMLTableRendererOpts, TXTTableRenderer};
 use clap::{crate_authors, crate_name, crate_version, App, Arg};
-use serde_json;
 use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};

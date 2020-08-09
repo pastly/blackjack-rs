@@ -3,7 +3,6 @@ use bj_core::basicstrategy::BasicStrategy;
 use bj_core::resp::resps_from_buf;
 use bj_core::table::Table;
 use clap::{crate_authors, crate_name, crate_version, App, Arg};
-use serde_json;
 use std::error::Error;
 use std::fs::OpenOptions;
 
