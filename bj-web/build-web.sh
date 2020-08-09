@@ -7,7 +7,7 @@ else
 	MODE="--release"
 fi
 echo "Compiling with $MODE"
-for CRATE_DIR in basic-strategy time-trial; do
+for CRATE_DIR in basic-strategy time-trial counting; do
     cd $CRATE_DIR
     cargo fmt
     cargo clippy

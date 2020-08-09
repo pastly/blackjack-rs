@@ -1,6 +1,6 @@
 use crate::deck::{Card, Rank};
 use std::default::Default;
-const DECK_LEN: u16 = 52;
+pub const DECK_LEN: u16 = 52;
 
 pub trait CountSystem {
     fn card_value(&self, card: Card) -> i16;
@@ -65,6 +65,10 @@ impl StatefulHiLo {
             return 0.0;
         }
         f32::from(self.count) / decks_remaining
+    }
+
+    pub fn running_count(&self) -> i16 {
+        self.count
     }
 }
 
