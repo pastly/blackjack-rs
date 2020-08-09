@@ -1,5 +1,5 @@
 [workspace]
-members =[
+members = [
     "bj-core",
     "bj-bin",
     "bj-web/basic-strategy",
