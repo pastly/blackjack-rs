@@ -14,7 +14,7 @@ bj-core = { path = "../../bj-core", version = "*" }
 bj-web-core = { path = "../core", version = "*" }
 # rand = { version = "0.7", features = ["wasm-bindgen"] }
 lazy_static = "1.4"
-# # js-sys = "0.3"
+js-sys = "0.3"
 # #serde = "1.0"
 # serde_json = "1.0"
 
