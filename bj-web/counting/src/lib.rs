@@ -1,6 +1,7 @@
 use bj_core::count::{StatefulHiLo, DECK_LEN};
 use bj_core::deck::{Card, Deck};
 use bj_web_core::card_char;
+use bj_web_core::localstorage::{lskeys, LSVal};
 use js_sys::Date;
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
@@ -153,4 +154,20 @@ pub fn game_duration() -> f64 {
     let dur = state.end_time - state.start_time;
     log(&format!("Duration was: {}", dur));
     dur
+}
+
+/// Store the given json string representing the preferences for the counting training module in
+/// local storage. No verification is done to ensure the string is valid preferences, let alone
+/// valid json.
+#[wasm_bindgen]
+pub fn set_ls_preferences(s: String) {
+    let mut prefs =
+        LSVal::from_ls_or_default(false, lskeys::LS_KEY_COUNTING_PREFS, "{}".to_string());
+    let _ = prefs.swap(s);
+}
+
+/// Get the preferences currently in local storage, or just "{}" if none.
+#[wasm_bindgen]
+pub fn get_ls_preferences() -> String {
+    LSVal::from_ls_or_default(false, lskeys::LS_KEY_COUNTING_PREFS, "{}".to_string()).clone()
 }
